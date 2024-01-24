@@ -140,7 +140,7 @@ namespace samurai
             return;
         }
 
-        Stencil<1, dim> coarse_cell_stencil = center_only_stencil<dim>();
+        auto coarse_cell_stencil = center_only_stencil<dim>();
         auto coarse_it                      = make_stencil_iterator(mesh, coarse_cell_stencil);
 
         auto comput_stencil_it = make_stencil_iterator(mesh, comput_stencil);
