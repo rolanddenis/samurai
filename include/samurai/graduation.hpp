@@ -10,8 +10,6 @@ namespace samurai
     template <class Mesh>
     bool is_graduated(const Mesh& mesh)
     {
-        std::cout << "IWH" << std::endl;
-        static_assert(false);
         constexpr auto stencil = star_stencil_kspace<Mesh::dim>();
 
         bool cond = true;
@@ -47,7 +45,6 @@ namespace samurai
     template <class Mesh, class TStencil>
     bool is_graduated(const Mesh& mesh, const TStencil stencil)
     {
-        static_assert(false);
         bool cond = true;
 
         std::size_t min_level = mesh.min_level();
@@ -79,8 +76,6 @@ namespace samurai
     template <class Mesh>
     void make_graduation(Mesh& mesh)
     {
-        static_assert(false);
-        std::cout << "IWH" << std::endl;
         constexpr auto stencil = star_stencil_kspace<Mesh::dim>();
 
         static constexpr std::size_t dim = Mesh::dim;
@@ -151,7 +146,6 @@ namespace samurai
     template <class Mesh, class TStencil>
     void make_graduation(Mesh& mesh, const TStencil stencil)
     {
-        static_assert(false);
         static constexpr std::size_t dim = Mesh::dim;
         using cl_type                    = typename Mesh::cl_type;
 

@@ -258,6 +258,7 @@ namespace samurai
             [] (auto, auto c) { return c.template properNeighborhood<neighbourhood_width>(); }
         );
 
+        // FIXME: initialize the xtensor_fixed in one line...
         Stencil<cells.size(), dim> stencil;
         cells.enumerate(
             [&stencil] (auto i, auto c)
@@ -285,7 +286,7 @@ namespace samurai
         else if constexpr (dim == 2)
         {
             //       left,   right,   bottom,  top
-            return {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+            return std::array<std::array<double, 2>, 4>({{-1, 0}, {1, 0}, {0, -1}, {0, 1}});
         }
         else if constexpr (dim == 3)
         {
