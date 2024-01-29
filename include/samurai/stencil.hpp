@@ -2,7 +2,6 @@
 #include "indices.hpp"
 #include "samurai/kspace/adaptators.hpp"
 #include "samurai/kspace/kcellnd.hpp"
-#include <xtensor/xadapt.hpp>
 
 namespace samurai
 {
@@ -287,120 +286,39 @@ namespace samurai
     template <std::size_t dim, std::size_t neighbourhood_width = 1>
     auto directional_stencils()
     {
-        static_assert(dim >= 1 && dim <= 3, "directional_stencils() not implemented for this dimension");
-        static_assert(neighbourhood_width >= 0 && neighbourhood_width <= 2,
-                      "directional_stencils() not implemented for this neighbourhood width");
+        static_assert(dim >= 1, "directional_stencils() not implemented for this dimension");
 
         static constexpr std::size_t stencil_size      = 1 + 2 * neighbourhood_width;
         static constexpr std::size_t n_cart_directions = 2 * dim;
 
         std::array<DirectionalStencil<stencil_size, dim>, n_cart_directions> dir_stencils;
 
-        if constexpr (neighbourhood_width == 0)
+        // FIXME: should be simpler using a kind of foreach on spanned directions!
+        std::size_t id      = 0;
+        constexpr auto cell = make_KCellND<dim>();
+
+        auto helper = [&cell, &id, &dir_stencils](auto i, auto step)
         {
-            dir_stencils[0].direction.fill(0);
-            dir_stencils[0].stencil.fill(0);
-        }
-        else if constexpr (neighbourhood_width == 1)
-        {
-            // clang-format off
-            if constexpr (dim == 1)
+            auto next_cell             = cell.template next<decltype(i)::value, decltype(step)::value>();
+            dir_stencils[id].direction = xadapt_array(next_cell.indexShift());
+            auto stencil               = cell
+                         + cell.dimension_concatenate(
+                             [](auto j, auto c)
+                             {
+                                 return c.template properNeighborhood < (decltype(i)::value == decltype(j)::value) ? neighbourhood_width : 0,
+                                        decltype(step)::value > ();
+                             });
+            dir_stencils[id].stencil = xadapt_array(stencil.indexShift());
+            ++id;
+        };
+
+        cell.enumerate(
+            [&helper](auto i, auto)
             {
-                // Left
-                dir_stencils[0].direction = {-1};
-                dir_stencils[0].stencil   = {{0}, {1}, {-1}};
-                // Right
-                dir_stencils[1].direction = {1};
-                dir_stencils[1].stencil   = {{0}, {-1}, {1}};
-            }
-            else if constexpr (dim == 2)
-            {
-                // Left
-                dir_stencils[0].direction = {-1, 0};
-                dir_stencils[0].stencil   = {{0,  0}, {1,  0}, {-1, 0}};
-                // Top
-                dir_stencils[1].direction = {0, 1};
-                dir_stencils[1].stencil   = {{0, 0 }, {0, -1}, {0, 1 }};
-                // Right
-                dir_stencils[2].direction = {1, 0};
-                dir_stencils[2].stencil   = {{0,  0}, {-1, 0}, {1,  0}};
-                // Bottom
-                dir_stencils[3].direction = {0, -1};
-                dir_stencils[3].stencil   = {{0, 0 }, {0, 1 }, {0, -1}};
-            }
-            else if constexpr (dim == 3)
-            {
-                // Left
-                dir_stencils[0].direction = {-1, 0, 0};
-                dir_stencils[0].stencil   = {{0,  0, 0}, {1,  0, 0}, {-1, 0, 0}};
-                // Top
-                dir_stencils[1].direction = {0, 1, 0};
-                dir_stencils[1].stencil   = {{0, 0 ,0}, {0, -1,0}, {0, 1,0 }};
-                // Right
-                dir_stencils[2].direction = {1, 0,0};
-                dir_stencils[2].stencil   = {{0,  0,0}, {-1, 0,0}, {1,  0,0}};
-                // Bottom
-                dir_stencils[3].direction = {0, -1,0};
-                dir_stencils[3].stencil   = {{0, 0,0 }, {0, 1,0 }, {0, -1,0}};
-                // Back
-                dir_stencils[4].direction = {0, 0,-1};
-                dir_stencils[4].stencil   = {{0,  0,0}, {0, 0,1}, {0,  0,-1}};
-                // Front
-                dir_stencils[5].direction = {0, 0, 1};
-                dir_stencils[5].stencil   = {{0, 0,0 }, {0, 0, -1}, {0, 0,1}};
-            }
-            // clang-format on
-        }
-        else if constexpr (neighbourhood_width == 2)
-        {
-            // clang-format off
-            if constexpr (dim == 1)
-            {
-                // Left
-                dir_stencils[0].direction = {-1};
-                dir_stencils[0].stencil   = {{0}, {1}, {2}, {-1}, {-2}};
-                // right
-                dir_stencils[1].direction = {1};
-                dir_stencils[1].stencil   = {{0}, {-1}, {-2}, {1}, {2}};
-            }
-            else if constexpr (dim == 2)
-            {
-                // Left
-                dir_stencils[0].direction = {-1, 0};
-                dir_stencils[0].stencil   = {{0,  0}, {1,  0}, {2,  0}, {-1, 0}, {-2, 0}};
-                // Top
-                dir_stencils[1].direction = {0, 1};
-                dir_stencils[1].stencil   = {{0, 0 }, {0, -1}, {0, -2}, {0, 1 }, {0, 2 }};
-                // Right
-                dir_stencils[2].direction = {1, 0};
-                dir_stencils[2].stencil   = {{0,  0}, {-1, 0}, {-2, 0}, {1,  0}, {2,  0}};
-                // Bottom
-                dir_stencils[3].direction = {0, -1};
-                dir_stencils[3].stencil   = {{0, 0 }, {0, 1 }, {0, 2 }, {0, -1}, {0, -2}};
-            }
-            else if constexpr (dim == 3)
-            {
-                // Left
-                dir_stencils[0].direction = {-1, 0, 0};
-                dir_stencils[0].stencil   = {{0,  0, 0}, {1,  0, 0}, {2,  0, 0}, {-1, 0, 0}, {-2, 0, 0}};
-                // Top
-                dir_stencils[1].direction = {0, 1, 0};
-                dir_stencils[1].stencil   = {{0, 0 , 0}, {0, -1, 0}, {0, -2, 0}, {0, 1 , 0}, {0, 2 , 0}};
-                // Right
-                dir_stencils[2].direction = {1, 0, 0};
-                dir_stencils[2].stencil   = {{0,  0, 0}, {-1, 0, 0}, {-2, 0, 0}, {1,  0, 0}, {2,  0, 0}};
-                // Bottom
-                dir_stencils[3].direction = {0, -1, 0};
-                dir_stencils[3].stencil   = {{0, 0 , 0}, {0, 1 , 0}, {0, 2 , 0}, {0, -1, 0}, {0, -2, 0}};
-                // Back
-                dir_stencils[4].direction = {0, 0, -1};
-                dir_stencils[4].stencil   = {{0,  0, 0}, {0, 0, 1}, {0, 0, 2}, {0,  0, -1}, {0,  0, -2}};
-                // Front
-                dir_stencils[5].direction = {0, 0, 1};
-                dir_stencils[5].stencil   = {{0,  0, 0}, {0, 0, -1}, {0, 0, -2}, {0,  0, 1}, {0,  0, 2}};
-            }
-            // clang-format on
-        }
+                helper(i, std::integral_constant<std::ptrdiff_t, -1>{});
+                helper(i, std::integral_constant<std::ptrdiff_t, 1>{});
+            });
+
         return dir_stencils;
     }
 
