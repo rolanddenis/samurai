@@ -1,5 +1,8 @@
 #pragma once
 #include "indices.hpp"
+#include "samurai/kspace/adaptators.hpp"
+#include "samurai/kspace/kcellnd.hpp"
+#include <xtensor/xadapt.hpp>
 
 namespace samurai
 {
@@ -237,105 +240,41 @@ namespace samurai
     template <std::size_t dim, std::size_t neighbourhood_width = 1>
     constexpr Stencil<1 + 2 * dim * neighbourhood_width, dim> star_stencil()
     {
-        static_assert(dim >= 1 && dim <= 3, "Star stencil not implemented for this dimension");
-        static_assert(neighbourhood_width >= 0 && neighbourhood_width <= 2, "Star stencil not implemented for this neighbourhood width");
+        static_assert(dim >= 1, "Star stencil not implemented for this dimension");
 
-        if constexpr (neighbourhood_width == 0)
-        {
-            Stencil<1, dim> s;
-            s.fill(0);
-            return s;
-        }
-        else if constexpr (neighbourhood_width == 1)
-        {
-            // clang-format off
-            if constexpr (dim == 1)
-            {
-                //    left, center, right
-                return {{-1}, {0}, {1}};
-            }
-            else if constexpr (dim == 2)
-            {
-                //       left,   center,  right,  bottom,  top
-                return {{-1, 0}, {0, 0}, {1, 0}, {0, -1}, {0, 1} };
-            }
-            else if constexpr (dim == 3)
-            {
-                //        left,      center,     right,     front,       back,     bottom,      top
-                return {{-1, 0, 0}, {0, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
-            }
-            // clang-format on
-        }
-        else if constexpr (neighbourhood_width == 2)
-        {
-            // clang-format off
-            if constexpr (dim == 1)
-            {
-                //   left2, left, center, right, right2
-                return {{-2}, {-1}, {0}, {1}, {2}};
-            }
-            else if constexpr (dim == 2)
-            {
-                //       left2,   left,   center,  right, right2  bottom2, bottom,   top,    top2
-                return {{-2, 0}, {-1, 0}, {0, 0}, {1, 0}, {2, 0}, {0, -2}, {0, -1}, {0, 1}, {0, 2}};
-            }
-            else if constexpr (dim == 3)
-            {
-                //        left2,       left,     center,     right,    right2,    front2,      front,      back,      back2,    bottom2,     bottom,      top,      top2
-                return {{-2, 0, 0}, {-1, 0, 0}, {0, 0, 0}, {1, 0, 0}, {2, 0, 0}, {0, -2, 0}, {0, -1, 0}, {0, 1, 0}, {0, 2, 0}, {0, 0, -2}, {0, 0, -1}, {0, 0, 1}, {0, 0, 2}};
-            }
-            // clang-format on
-        }
-        return Stencil<1 + 2 * dim * neighbourhood_width, dim>();
+        constexpr auto cell  = make_KCellND<dim>();
+        constexpr auto cells = cell
+                             + cell.dimension_concatenate(
+                                 [](auto, auto c)
+                                 {
+                                     return c.template properNeighborhood<neighbourhood_width>();
+                                 });
+
+        return xadapt_array(cells.indexShift());
     }
 
     template <std::size_t dim>
     constexpr Stencil<2 * dim, dim> cartesian_directions()
     {
-        static_assert(dim >= 1 && dim <= 3, "cartesian_directions() not implemented for this dimension");
+        static_assert(dim >= 1, "cartesian_directions() not implemented for this dimension");
 
-        // clang-format off
-        if constexpr (dim == 1)
-        {
-            //     left, right
-            return {{-1}, {1}};
-        }
-        else if constexpr (dim == 2)
-        {
-            //       left,   right,   bottom,  top
-            return {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-        }
-        else if constexpr (dim == 3)
-        {
-            //         left,      right,     front,      back,      bottom,      top
-            return {{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
-        }
-        // clang-format on
-        return Stencil<2 * dim, dim>();
+        constexpr auto cell  = make_KCellND<dim>();
+        constexpr auto cells = cell.properNeighborhood().indexShift();
+        return xadapt_array(cells.indexShift());
     }
 
     template <std::size_t dim>
     constexpr Stencil<dim, dim> positive_cartesian_directions()
     {
-        static_assert(dim >= 1 && dim <= 3, "positive_cartesian_directions() not implemented for this dimension");
-        // clang-format off
-        if constexpr (dim == 1)
-        {
-            //     right
-            return {{1}};
-        }
-        else if constexpr (dim == 2)
-        {
-            //      right,   top
-            return {{1, 0}, {0, 1}};
-        }
-        else if constexpr (dim == 3)
-        {
-            //        right,     back,       top
-            return {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-        }
-        // clang-format on
-        return Stencil<dim, dim>();
+        static_assert(dim >= 1, "positive_cartesian_directions() not implemented for this dimension");
+
+        constexpr auto cell  = make_KCellND<dim>();
+        constexpr auto cells = cell.dimension_concatenate(
+            [](auto, auto c)
+            {
+                return c.next();
+            });
+        return xadapt_array(cells.indexShift());
     }
 
     /**
