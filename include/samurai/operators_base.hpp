@@ -124,16 +124,16 @@ namespace samurai
         }
 
         template <class Function, class... Args, std::size_t... I>
-        auto call_with_indices(Function&& fn, Args&&... args, std::index_sequence<I...>) const
+        auto call_with_indices(std::index_sequence<I...>, Function&& fn, Args&&... args) const
         {
-            return std::forward<Function>(fn)(std::forward<Args>(args)..., get_index<I>...);
+            return std::forward<Function>(fn)(std::forward<Args>(args)..., get_index<I>()...);
         }
 
         template <std::size_t Dimension, class Function, class... Args>
         auto call_with_indices(Function&& fn, Args&&... args) const
         {
-            static_assert(Dimension >= 1 && Dimension = < 3, "field_operator_base supports space of dimension 3 at most");
-            return call_with_indices(std::forward<Function>(fn), std::forward<Args>(args)..., std::make_index_sequence<Dimension>{});
+            static_assert(Dimension >= 1 && Dimension <= 3, "field_operator_base supports space of dimension 3 at most");
+            return call_with_indices(std::make_index_sequence<Dimension>{}, std::forward<Function>(fn), std::forward<Args>(args)...);
         }
 
       protected:

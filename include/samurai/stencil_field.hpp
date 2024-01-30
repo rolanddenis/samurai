@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <type_traits>
-
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xfunction.hpp>
 #include <xtensor/xmasked_view.hpp>
@@ -28,6 +26,7 @@ namespace samurai
         const derived_type& derived_cast() const& noexcept;
         derived_type derived_cast() && noexcept;
 
+        // TODO: generic operator() (need base generic flux)
         template <class... CT>
         inline auto operator()(Dim<1>, CT&&... e) const
         {
@@ -50,6 +49,54 @@ namespace samurai
                     + -derived_cast().down_flux(std::forward<CT>(e)...) + derived_cast().up_flux(std::forward<CT>(e)...)
                     + -derived_cast().front_flux(std::forward<CT>(e)...) + derived_cast().back_flux(std::forward<CT>(e)...))
                  / derived_cast().dx();
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto left_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<0, -1>(a, u);
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto right_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<0, 1>(a, u);
+        }
+
+        template <class T>
+        inline auto left_flux(double a, const T& u) const
+        {
+            return derived_cast().template left_flux(std::array<double, 1>{a}, u);
+        }
+
+        template <class T>
+        inline auto right_flux(double a, const T& u) const
+        {
+            return derived_cast().template flux<0, 1>(a, u);
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto down_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<1, -1>(a, u);
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto up_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<1, 1>(a, u);
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto front_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<2, -1>(a, u);
+        }
+
+        template <class T, std::size_t Dimension>
+        inline auto back_flux(std::array<double, Dimension> a, const T& u) const
+        {
+            return derived_cast().template flux<2, 1>(a, u);
         }
 
       protected:
@@ -95,21 +142,30 @@ namespace samurai
             return (.5 * a * (std::forward<T1>(ul) + std::forward<T2>(ur)) + .5 * std::abs(a) * (std::forward<T1>(ul) - std::forward<T2>(ur)));
         }
 
-        template <std::size_t Direction, std::ptrdiff_t Step, std::size_t Dimension, class T, typename = std::enable_if_t<(Dimension > 0)>>
+        /** @brief Generic flux function along given direction and way
+         *  @tparam Direction   Direction of the flux
+         *  @tparam Step        Forward (+1) or backward (-1) flux
+         */
+        template <std::size_t Direction, std::ptrdiff_t Step, std::size_t Dimension, class T>
         auto flux(std::array<double, Dimension> a, const T& u) const
         {
-            constexpr auto cell  = make_KCellND<Dimension>();        // A cell a full-dimension
-            constexpr auto face  = cell.incident<Direction, Step>(); // Its face along the given direction
+            static_assert(Dimension > 0, "Positive dimension only");
+            static_assert(Step == 1 || Step == -1, "Step should be equal to ±1");
+
+            constexpr auto cell  = make_KCellND<Dimension>();                 // A cell a full-dimension
+            constexpr auto face  = cell.template incident<Direction, Step>(); // Its face along the given direction
             constexpr auto cells = face.upperIncident(); // The neighborhood of this face with greater dimension (so, same as cell)
-            auto shift_helper    = [&level, &this, &u](auto c, auto... idx)
+
+            // Calling u on shifted indices
+            auto shift_helper = [this, &u](auto c, auto... idx)
             {
                 return c.shift(u, level, idx...);
             };
 
             return cells.apply(
-                [](auto... c)
+                [this, &a, &shift_helper](auto... c)
                 {
-                    return flux(a[Direction], call_with_indices(shift_helper, c)...);
+                    return flux(a[Direction], this->template call_with_indices<Dimension>(shift_helper, c)...);
                 });
         }
 
@@ -117,81 +173,6 @@ namespace samurai
         auto flux(double a, const T& u) const
         {
             return flux(std::array<double, 1>{a}, u);
-        }
-
-        // 1D
-        template <class T>
-        inline auto left_flux(double a, const T& u) const
-        {
-            return flux(a, u(level, i - 1), u(level, i));
-        }
-
-        template <class T>
-        inline auto right_flux(double a, const T& u) const
-        {
-            return flux(a, u(level, i), u(level, i + 1));
-        }
-
-        // 2D
-        template <class T>
-        inline auto left_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[0], u(level, i - 1, j), u(level, i, j));
-        }
-
-        template <class T>
-        inline auto right_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[0], u(level, i, j), u(level, i + 1, j));
-        }
-
-        template <class T>
-        inline auto down_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j - 1), u(level, i, j));
-        }
-
-        template <class T>
-        inline auto up_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j), u(level, i, j + 1));
-        }
-
-        // 3D
-        template <class T>
-        inline auto left_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[0], u(level, i - 1, j, k), u(level, i, j, k));
-        }
-
-        template <class T>
-        inline auto right_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[0], u(level, i, j, k), u(level, i + 1, j, k));
-        }
-
-        template <class T>
-        inline auto down_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j - 1, k), u(level, i, j, k));
-        }
-
-        template <class T>
-        inline auto up_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j, k), u(level, i, j + 1, k));
-        }
-
-        template <class T>
-        inline auto front_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[2], u(level, i, j, k - 1), u(level, i, j, k));
-        }
-
-        template <class T>
-        inline auto back_flux(std::array<double, 3> a, const T& u) const
-        {
-            return flux(a[2], u(level, i, j, k), u(level, i, j, k + 1));
         }
     };
 
@@ -230,29 +211,37 @@ namespace samurai
             return out;
         }
 
-        // 2D
-        template <class T>
-        inline auto left_flux(std::array<double, 2> a, const T& u) const
+        /** @brief Generic flux function along given direction and way
+         *  @tparam Direction   Direction of the flux
+         *  @tparam Step        Forward (+1) or backward (-1) flux
+         */
+        template <std::size_t Direction, std::ptrdiff_t Step, std::size_t Dimension, class T>
+        auto flux(std::array<double, Dimension> a, const T& u) const
         {
-            return flux(a[0], u(level, i - 1, j), u(level, i, j));
+            static_assert(Dimension > 0, "Positive dimension only");
+            static_assert(Step == 1 || Step == -1, "Step should be equal to ±1");
+
+            constexpr auto cell  = make_KCellND<Dimension>();                 // A cell a full-dimension
+            constexpr auto face  = cell.template incident<Direction, Step>(); // Its face along the given direction
+            constexpr auto cells = face.upperIncident(); // The neighborhood of this face with greater dimension (so, same as cell)
+
+            // Calling u on shifted indices
+            auto shift_helper = [this, &u](auto c, auto... idx)
+            {
+                return c.shift(u, level, idx...);
+            };
+
+            return cells.apply(
+                [this, &a, &shift_helper](auto... c)
+                {
+                    return flux(a[Direction], this->template call_with_indices<Dimension>(shift_helper, c)...);
+                });
         }
 
-        template <class T>
-        inline auto right_flux(std::array<double, 2> a, const T& u) const
+        template <std::size_t Direction, std::size_t Step, class T>
+        auto flux(double a, const T& u) const
         {
-            return flux(a[0], u(level, i, j), u(level, i + 1, j));
-        }
-
-        template <class T>
-        inline auto down_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j - 1), u(level, i, j));
-        }
-
-        template <class T>
-        inline auto up_flux(std::array<double, 2> a, const T& u) const
-        {
-            return flux(a[1], u(level, i, j), u(level, i, j + 1));
+            return flux(std::array<double, 1>{a}, u);
         }
     };
 
