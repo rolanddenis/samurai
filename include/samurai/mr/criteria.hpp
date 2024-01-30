@@ -9,6 +9,7 @@
 
 #include "../cell_flag.hpp"
 #include "../operators_base.hpp"
+#include "samurai/kspace/kcellnd.hpp"
 
 namespace samurai
 {
@@ -20,159 +21,51 @@ namespace samurai
 
         INIT_OPERATOR(to_coarsen_mr_op)
 
-        template <class T1, class T2>
-        // inline void operator()(Dim<1>, const T1& detail, const T3&
-        // max_detail, T2 &tag, double eps, std::size_t min_lev) const
-        inline void operator()(Dim<1>, const T1& detail, T2& tag, double eps, std::size_t min_lev) const
-
+        template <class T1, class T2, std::size_t Dimension>
+        inline void operator()(Dim<Dimension>, const T1& detail, T2& tag, double eps, std::size_t min_lev) const
         {
-            constexpr auto size    = T1::size;
-            std::size_t fine_level = level + 1;
+            static_assert(Dimension > 0, "Invalid dimension");
+            constexpr auto size = T1::size;
 
-            if (fine_level > min_lev)
+            if (level + 1 > min_lev)
             {
-                // auto maxd = xt::view(max_detail, level);
+                // Cells that are above
+                constexpr auto up_cells = make_KCellND<Dimension>().up();
 
-                if constexpr (size == 1)
+                // Calling detail on shifted indices
+                auto detail_shift_helper = [this, &detail](auto c, auto... idx)
                 {
-                    // auto mask = xt::abs(detail(level, 2*i))/maxd < eps;
-                    auto mask = xt::abs(detail(fine_level, 2 * i)) < eps; // NO normalization
+                    return c.shift(detail, level, idx...);
+                };
 
-                    xt::masked_view(tag(fine_level, 2 * i), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
-                else
+                // Creating mask
+                auto mask = up_cells.apply(
+                    [this, &detail_shift_helper, &size, &eps, &detail](auto... c)
+                    {
+                        auto tmp_mask = ((xt::abs(this->template call_with_indices<Dimension>(detail_shift_helper, c)) < eps) && ...);
+                        if constexpr (size == 1)
+                        {
+                            return tmp_mask;
+                        }
+                        else
+                        {
+                            return xt::sum(std::move(tmp_mask), {detail.is_soa ? 0 : 1}) > (size - 1);
+                        }
+                    });
+
+                // Calling tag on shifted indices
+                auto tag_shift_helper = [this, &tag](auto c, auto... idx)
                 {
-                    // auto mask = xt::sum((xt::abs(detail(level, 2*i))/maxd <
-                    // eps), {1}) > (size-1);
-                    auto mask = xt::sum((xt::abs(detail(fine_level, 2 * i)) < eps), {detail.is_soa ? 0 : 1}) > (size - 1); // No
-                                                                                                                           // normalization
+                    return c.shift(tag, level, idx...);
+                };
 
-                    xt::masked_view(tag(fine_level, 2 * i), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
-            }
-        }
-
-        template <class T1, class T2>
-        inline void operator()(Dim<2>, const T1& detail, T2& tag, double eps, std::size_t min_lev) const
-        {
-            constexpr auto size    = T1::size;
-            std::size_t fine_level = level + 1;
-
-            if (fine_level > min_lev)
-            {
-                // auto maxd = xt::view(max_detail, level);
-
-                if constexpr (size == 1)
-                {
-                    // auto mask = (xt::abs(detail(level, 2*i  ,   2*j))/maxd <
-                    // eps) &&
-                    //             (xt::abs(detail(level, 2*i+1,   2*j))/maxd <
-                    //             eps) && (xt::abs(detail(level, 2*i  ,
-                    //             2*j+1))/maxd < eps) && (xt::abs(detail(level,
-                    //             2*i+1, 2*j+1))/maxd < eps);
-                    auto mask = (xt::abs(detail(fine_level, 2 * i, 2 * j)) < eps) && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1)) < eps);
-
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
-                else
-                {
-                    // auto mask = xt::sum((xt::abs(detail(level, 2*i  ,
-                    // 2*j))/maxd < eps) &&
-                    //                     (xt::abs(detail(level, 2*i+1,
-                    //                     2*j))/maxd < eps) &&
-                    //                     (xt::abs(detail(level, 2*i  ,
-                    //                     2*j+1))/maxd < eps) &&
-                    //                     (xt::abs(detail(level, 2*i+1,
-                    //                     2*j+1))/maxd < eps), {1}) > (size-1);
-                    auto mask = xt::sum((xt::abs(detail(fine_level, 2 * i, 2 * j)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1)) < eps),
-                                        {detail.is_soa ? 0 : 1})
-                              > (size - 1);
-
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
-            }
-        }
-
-        template <class T1, class T2>
-        inline void operator()(Dim<3>, const T1& detail, T2& tag, double eps, std::size_t min_lev) const
-        {
-            constexpr auto size    = T1::size;
-            std::size_t fine_level = level + 1;
-
-            if (fine_level > min_lev)
-            {
-                // auto maxd = xt::view(max_detail, level);
-
-                if constexpr (size == 1)
-                {
-                    // auto mask = (xt::abs(detail(level, 2*i  ,   2*j))/maxd <
-                    // eps) and
-                    //             (xt::abs(detail(level, 2*i+1,   2*j))/maxd <
-                    //             eps) and (xt::abs(detail(level, 2*i  ,
-                    //             2*j+1))/maxd < eps) and
-                    //             (xt::abs(detail(level, 2*i+1, 2*j+1))/maxd <
-                    //             eps);
-                    auto mask = (xt::abs(detail(fine_level, 2 * i, 2 * j, 2 * k)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j, 2 * k)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1, 2 * k)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1, 2 * k)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i, 2 * j, 2 * k + 1)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j, 2 * k + 1)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1, 2 * k + 1)) < eps)
-                             && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1, 2 * k + 1)) < eps);
-
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j, 2 * k), mask)             = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j, 2 * k), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1, 2 * k), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1, 2 * k), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j, 2 * k + 1), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j, 2 * k + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1, 2 * k + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1, 2 * k + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
-                else
-                {
-                    // auto mask = xt::sum((xt::abs(detail(level, 2*i  ,
-                    // 2*j))/maxd < eps) and
-                    //                     (xt::abs(detail(level, 2*i+1,
-                    //                     2*j))/maxd < eps) and
-                    //                     (xt::abs(detail(level, 2*i  ,
-                    //                     2*j+1))/maxd < eps) and
-                    //                     (xt::abs(detail(level, 2*i+1,
-                    //                     2*j+1))/maxd < eps), {1}) > (size-1);
-                    auto mask = xt::sum((xt::abs(detail(fine_level, 2 * i, 2 * j, 2 * k)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j, 2 * k)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1, 2 * k)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1, 2 * k)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i, 2 * j, 2 * k + 1)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j, 2 * k + 1)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i, 2 * j + 1, 2 * k + 1)) < eps)
-                                            && (xt::abs(detail(fine_level, 2 * i + 1, 2 * j + 1, 2 * k + 1)) < eps),
-                                        {detail.is_soa ? 0 : 1})
-                              > (size - 1);
-
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j, 2 * k), mask)             = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j, 2 * k), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1, 2 * k), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1, 2 * k), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j, 2 * k + 1), mask)         = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j, 2 * k + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i, 2 * j + 1, 2 * k + 1), mask)     = static_cast<int>(CellFlag::coarsen);
-                    xt::masked_view(tag(fine_level, 2 * i + 1, 2 * j + 1, 2 * k + 1), mask) = static_cast<int>(CellFlag::coarsen);
-                }
+                // Tagging cells to coarsen
+                up_cells.foreach (
+                    [this, &tag_shift_helper, &mask](auto c)
+                    {
+                        xt::masked_view(this->template call_with_indices<Dimension>(tag_shift_helper, c),
+                                        mask) = static_cast<int>(CellFlag::coarsen);
+                    });
             }
         }
     };
