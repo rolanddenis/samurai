@@ -4,12 +4,15 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xfunction.hpp>
 #include <xtensor/xmasked_view.hpp>
 
 #include "cell.hpp"
 #include "field_expression.hpp"
+#include "kspace/kcellnd.hpp"
 #include "operators_base.hpp"
 
 namespace samurai
@@ -90,6 +93,30 @@ namespace samurai
             // TODO(loic): remove the xt::eval (bug without, see
             // VF_advection_1d)
             return (.5 * a * (std::forward<T1>(ul) + std::forward<T2>(ur)) + .5 * std::abs(a) * (std::forward<T1>(ul) - std::forward<T2>(ur)));
+        }
+
+        template <std::size_t Direction, std::ptrdiff_t Step, std::size_t Dimension, class T, typename = std::enable_if_t<(Dimension > 0)>>
+        auto flux(std::array<double, Dimension> a, const T& u) const
+        {
+            constexpr auto cell  = make_KCellND<Dimension>();        // A cell a full-dimension
+            constexpr auto face  = cell.incident<Direction, Step>(); // Its face along the given direction
+            constexpr auto cells = face.upperIncident(); // The neighborhood of this face with greater dimension (so, same as cell)
+            auto shift_helper    = [&level, &this, &u](auto c, auto... idx)
+            {
+                return c.shift(u, level, idx...);
+            };
+
+            return cells.apply(
+                [](auto... c)
+                {
+                    return flux(a[Direction], call_with_indices(shift_helper, c)...);
+                });
+        }
+
+        template <std::size_t Direction, std::size_t Step, class T>
+        auto flux(double a, const T& u) const
+        {
+            return flux(std::array<double, 1>{a}, u);
         }
 
         // 1D

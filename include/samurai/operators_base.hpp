@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include <xtensor/xfixed.hpp>
 
 #include "field_expression.hpp"
@@ -83,6 +85,55 @@ namespace samurai
         double dx() const
         {
             return m_dx;
+        }
+
+        template <std::size_t Index>
+        auto& get_index()
+        {
+            static_assert(Index < 3, "field_operator_base supports space of dimension 3 at most");
+            if constexpr (Index == 0)
+            {
+                return i;
+            }
+            else if constexpr (Index == 1)
+            {
+                return j;
+            }
+            else
+            {
+                return k;
+            }
+        }
+
+        template <std::size_t Index>
+        auto const& get_index() const
+        {
+            static_assert(Index < 3, "field_operator_base supports space of dimension 3 at most");
+            if constexpr (Index == 0)
+            {
+                return i;
+            }
+            else if constexpr (Index == 1)
+            {
+                return j;
+            }
+            else
+            {
+                return k;
+            }
+        }
+
+        template <class Function, class... Args, std::size_t... I>
+        auto call_with_indices(Function&& fn, Args&&... args, std::index_sequence<I...>) const
+        {
+            return std::forward<Function>(fn)(std::forward<Args>(args)..., get_index<I>...);
+        }
+
+        template <std::size_t Dimension, class Function, class... Args>
+        auto call_with_indices(Function&& fn, Args&&... args) const
+        {
+            static_assert(Dimension >= 1 && Dimension = < 3, "field_operator_base supports space of dimension 3 at most");
+            return call_with_indices(std::forward<Function>(fn), std::forward<Args>(args)..., std::make_index_sequence<Dimension>{});
         }
 
       protected:
