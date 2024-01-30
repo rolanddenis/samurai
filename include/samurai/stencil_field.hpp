@@ -172,7 +172,7 @@ namespace samurai
         template <std::size_t Direction, std::size_t Step, class T>
         auto flux(double a, const T& u) const
         {
-            return flux(std::array<double, 1>{a}, u);
+            return flux<Direction, Step>(std::array<double, 1>{a}, u);
         }
     };
 
@@ -241,7 +241,7 @@ namespace samurai
         template <std::size_t Direction, std::size_t Step, class T>
         auto flux(double a, const T& u) const
         {
-            return flux(std::array<double, 1>{a}, u);
+            return flux<Direction, Step>(std::array<double, 1>{a}, u);
         }
     };
 
