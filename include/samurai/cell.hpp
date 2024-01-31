@@ -10,6 +10,8 @@
 #include <xtensor/xio.hpp>
 #include <xtensor/xview.hpp>
 
+#include "kspace/utils.hpp"
+
 namespace samurai
 {
     template <typename LevelType, std::enable_if_t<std::is_integral<LevelType>::value, bool> = true>
@@ -27,7 +29,7 @@ namespace samurai
      *  @tparam dim_ The dimension of the cell.
      *  @tparam TInterval The type of the interval.
      */
-    template <std::size_t dim_, class TInterval>
+    template <std::size_t dim_, class TInterval, std::size_t Topology = (1ul << dim_) - 1>
     struct Cell
     {
         static constexpr std::size_t dim = dim_;
@@ -36,6 +38,8 @@ namespace samurai
         using index_t                    = typename interval_t::index_t;
         using indices_t                  = xt::xtensor_fixed<value_t, xt::xshape<dim>>;
         using coords_t                   = xt::xtensor_fixed<double, xt::xshape<dim>>;
+
+        static constexpr std::size_t topology = Topology;
 
         Cell() = default;
 
@@ -68,8 +72,8 @@ namespace samurai
         double length = 0;
     };
 
-    template <std::size_t dim_, class TInterval>
-    inline Cell<dim_, TInterval>::Cell(std::size_t level_, const indices_t& indices_, index_t index_)
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline Cell<dim_, TInterval, Topology>::Cell(std::size_t level_, const indices_t& indices_, index_t index_)
         : level(level_)
         , indices(indices_)
         , index(index_)
@@ -77,11 +81,11 @@ namespace samurai
     {
     }
 
-    template <std::size_t dim_, class TInterval>
-    inline Cell<dim_, TInterval>::Cell(std::size_t level_,
-                                       const value_t& i,
-                                       const xt::xtensor_fixed<value_t, xt::xshape<dim - 1>> others,
-                                       index_t index_)
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline Cell<dim_, TInterval, Topology>::Cell(std::size_t level_,
+                                                 const value_t& i,
+                                                 const xt::xtensor_fixed<value_t, xt::xshape<dim - 1>> others,
+                                                 index_t index_)
         : level(level_)
         , index(index_)
         , length(cell_length(level))
@@ -95,14 +99,14 @@ namespace samurai
     /**
      * The minimum corner of the cell.
      */
-    template <std::size_t dim_, class TInterval>
-    inline auto Cell<dim_, TInterval>::corner() const -> coords_t
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline auto Cell<dim_, TInterval, Topology>::corner() const -> coords_t
     {
         return length * indices;
     }
 
-    template <std::size_t dim_, class TInterval>
-    inline double Cell<dim_, TInterval>::corner(std::size_t i) const
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline double Cell<dim_, TInterval, Topology>::corner(std::size_t i) const
     {
         return length * indices[i];
     }
@@ -110,34 +114,35 @@ namespace samurai
     /**
      * The minimum corner of the cell.
      */
-    template <std::size_t dim_, class TInterval>
-    inline auto Cell<dim_, TInterval>::center() const -> coords_t
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline auto Cell<dim_, TInterval, Topology>::center() const -> coords_t
     {
         return length * (indices + 0.5);
     }
 
-    template <std::size_t dim_, class TInterval>
-    inline double Cell<dim_, TInterval>::center(std::size_t i) const
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline double Cell<dim_, TInterval, Topology>::center(std::size_t i) const
     {
         return length * (indices[i] + 0.5);
     }
 
-    template <std::size_t dim_, class TInterval>
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
     template <class Vector>
-    inline auto Cell<dim_, TInterval>::face_center(const Vector& direction) const -> coords_t
+    inline auto Cell<dim_, TInterval, Topology>::face_center(const Vector& direction) const -> coords_t
     {
         assert(abs(xt::sum(direction)(0)) == 1); // We only want a Cartesian unit vector
         return center() + (length / 2) * direction;
     }
 
-    template <std::size_t dim_, class TInterval>
-    inline void Cell<dim_, TInterval>::to_stream(std::ostream& os) const
+    template <std::size_t dim_, class TInterval, std::size_t Topology>
+    inline void Cell<dim_, TInterval, Topology>::to_stream(std::ostream& os) const
     {
-        os << "Cell -> level: " << level << " indices: " << indices << " center: " << center() << " index: " << index;
+        os << "Cell -> level: " << level << " indices: " << indices << " center: " << center() << " index: " << index
+           << " topology: " << topology_as_string<dim_>(topology);
     }
 
-    template <std::size_t dim, class TInterval>
-    inline std::ostream& operator<<(std::ostream& out, const Cell<dim, TInterval>& cell)
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    inline std::ostream& operator<<(std::ostream& out, const Cell<dim, TInterval, Topology>& cell)
     {
         cell.to_stream(out);
         return out;
