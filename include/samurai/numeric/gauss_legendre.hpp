@@ -27,8 +27,8 @@ namespace samurai
             init();
         }
 
-        template <std::size_t func_result_size, std::size_t dim, class TInterval, class Func>
-        auto quadrature(const Cell<dim, TInterval>& cell, Func&& f)
+        template <std::size_t func_result_size, std::size_t dim, class TInterval, std::size_t topology, class Func>
+        auto quadrature(const Cell<dim, TInterval, topology>& cell, Func&& f)
         {
             const double half_h = cell.length / 2;
             if constexpr (func_result_size == 1)
@@ -48,8 +48,8 @@ namespace samurai
 
       private:
 
-        template <std::size_t dim, class TInterval, class FuncResultType, class Func>
-        void compute_quadrature_sum(const Cell<dim, TInterval>& cell, FuncResultType& sum, Func&& f)
+        template <std::size_t dim, class TInterval, std::size_t topology, class FuncResultType, class Func>
+        void compute_quadrature_sum(const Cell<dim, TInterval, topology>& cell, FuncResultType& sum, Func&& f)
         {
             static_assert(dim >= 1 && dim <= 3,
                           "The Gauss-Legendre quadrature is not implemented "

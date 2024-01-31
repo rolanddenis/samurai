@@ -3,6 +3,8 @@
 // license that can be found in the LICENSE file.
 #pragma once
 
+#include <cstddef>
+
 #ifdef SAMURAI_WITH_MPI
 #include <boost/mpi.hpp>
 namespace mpi = boost::mpi;
@@ -31,5 +33,23 @@ namespace samurai
         MPI_Finalize();
 #endif
     }
+
+    template <class TValue, class TIndex>
+    struct Interval;
+
+    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    class CellArray;
+
+    template <class D, class Config>
+    class Mesh_base;
+
+    template <class F, class... CT>
+    class subset_operator;
+
+    template <std::size_t Dim, class TInterval, std::size_t Topology = (1ul << Dim) - 1>
+    class LevelCellList;
+
+    template <std::size_t Dim, class TInterval, std::size_t Topology = (1ul << Dim) - 1>
+    class LevelCellArray;
 
 }

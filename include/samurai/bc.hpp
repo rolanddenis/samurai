@@ -14,6 +14,7 @@
 #include <xtensor/xnoalias.hpp>
 #include <xtensor/xview.hpp>
 
+#include "samurai.hpp"
 #include "samurai/cell.hpp"
 #include "samurai_config.hpp"
 #include "static_algorithm.hpp"
@@ -40,12 +41,6 @@ namespace samurai
 
     template <class F, class... CT>
     class subset_operator;
-
-    template <std::size_t dim, class TInterval>
-    class LevelCellArray;
-
-    template <std::size_t dim, class TInterval>
-    class LevelCellList;
 
     template <class D, class Config>
     class Mesh_base;

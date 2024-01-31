@@ -9,21 +9,10 @@
 #include "cell.hpp"
 #include "mesh_holder.hpp"
 #include "mesh_interval.hpp"
+#include "samurai.hpp"
 
 namespace samurai
 {
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    class CellArray;
-
-    template <std::size_t dim_, class TInterval>
-    class LevelCellArray;
-
-    template <class D, class Config>
-    class Mesh_base;
-
-    template <class F, class... CT>
-    class subset_operator;
-
     ///////////////////////////////////
     // for_each_level implementation //
     ///////////////////////////////////
@@ -51,8 +40,8 @@ namespace samurai
     // for_each_interval implementation //
     //////////////////////////////////////
 
-    template <std::size_t dim, class TInterval, class Func>
-    inline void for_each_interval(const LevelCellArray<dim, TInterval>& lca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology, class Func>
+    inline void for_each_interval(const LevelCellArray<dim, TInterval, Topology>& lca, Func&& f)
     {
         if (!lca.empty())
         {
@@ -63,8 +52,8 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim, class TInterval, class Func>
-    inline void for_each_interval(LevelCellArray<dim, TInterval>& lca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology, class Func>
+    inline void for_each_interval(LevelCellArray<dim, TInterval, Topology>& lca, Func&& f)
     {
         if (!lca.empty())
         {
@@ -117,10 +106,10 @@ namespace samurai
     // for_each_meshinterval implementation //
     //////////////////////////////////////////
 
-    template <std::size_t dim, class TInterval, class Func>
-    inline void for_each_meshinterval(const LevelCellArray<dim, TInterval>& lca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology, class Func>
+    inline void for_each_meshinterval(const LevelCellArray<dim, TInterval, Topology>& lca, Func&& f)
     {
-        using MeshInterval = typename LevelCellArray<dim, TInterval>::mesh_interval_t;
+        using MeshInterval = typename LevelCellArray<dim, TInterval, Topology>::mesh_interval_t;
 
         for (auto it = lca.cbegin(); it != lca.cend(); ++it)
         {
@@ -157,8 +146,8 @@ namespace samurai
     // for_each_cell implementation //
     //////////////////////////////////
 
-    template <std::size_t dim, class TInterval, class Func>
-    inline void for_each_cell(const LevelCellArray<dim, TInterval>& lca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology, class Func>
+    inline void for_each_cell(const LevelCellArray<dim, TInterval, Topology>& lca, Func&& f)
     {
         using cell_t        = Cell<dim, TInterval>;
         using index_value_t = typename cell_t::value_t;
@@ -180,8 +169,8 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim, class TInterval, class Func, class F, class... CT>
-    inline void for_each_cell(const LevelCellArray<dim, TInterval>& lca, subset_operator<F, CT...> set, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology, class Func, class F, class... CT>
+    inline void for_each_cell(const LevelCellArray<dim, TInterval, Topology>& lca, subset_operator<F, CT...> set, Func&& f)
     {
         using cell_t        = Cell<dim, TInterval>;
         using index_value_t = typename cell_t::value_t;
@@ -286,14 +275,18 @@ namespace samurai
             return -1;
         }
 
-        template <std::size_t dim, class TInterval, class index_t = typename TInterval::index_t, class coord_index_t = typename TInterval::coord_index_t>
-        inline auto find_impl(const LevelCellArray<dim, TInterval>& lca,
+        template <std::size_t dim,
+                  class TInterval,
+                  std::size_t Topology,
+                  class index_t       = typename TInterval::index_t,
+                  class coord_index_t = typename TInterval::coord_index_t>
+        inline auto find_impl(const LevelCellArray<dim, TInterval, Topology>& lca,
                               std::size_t start_index,
                               std::size_t end_index,
                               const xt::xtensor_fixed<coord_index_t, xt::xshape<dim>>& coord,
                               std::integral_constant<std::size_t, 0>) -> index_t
         {
-            using lca_t     = const LevelCellArray<dim, TInterval>;
+            using lca_t     = const LevelCellArray<dim, TInterval, Topology>;
             using diff_t    = typename lca_t::const_iterator::difference_type;
             auto find_index = my_binary_search(lca[0].cbegin() + static_cast<diff_t>(start_index),
                                                lca[0].cbegin() + static_cast<diff_t>(end_index),
@@ -304,16 +297,17 @@ namespace samurai
 
         template <std::size_t dim,
                   class TInterval,
+                  std::size_t Topology,
                   class index_t       = typename TInterval::index_t,
                   class coord_index_t = typename TInterval::coord_index_t,
                   std::size_t N>
-        inline auto find_impl(const LevelCellArray<dim, TInterval>& lca,
+        inline auto find_impl(const LevelCellArray<dim, TInterval, Topology>& lca,
                               std::size_t start_index,
                               std::size_t end_index,
                               const xt::xtensor_fixed<coord_index_t, xt::xshape<dim>>& coord,
                               std::integral_constant<std::size_t, N>) -> index_t
         {
-            using lca_t        = const LevelCellArray<dim, TInterval>;
+            using lca_t        = const LevelCellArray<dim, TInterval, Topology>;
             using diff_t       = typename lca_t::const_iterator::difference_type;
             index_t find_index = my_binary_search(lca[N].cbegin() + static_cast<diff_t>(start_index),
                                                   lca[N].cbegin() + static_cast<diff_t>(end_index),
@@ -332,17 +326,25 @@ namespace samurai
         }
     } // namespace detail
 
-    template <std::size_t dim, class TInterval, class index_t = typename TInterval::index_t, class coord_index_t = typename TInterval::coord_index_t>
-    inline auto find(const LevelCellArray<dim, TInterval>& lca, const xt::xtensor_fixed<coord_index_t, xt::xshape<dim>>& coord) -> index_t
+    template <std::size_t dim, class TInterval, std::size_t Topology, class index_t = typename TInterval::index_t, class coord_index_t = typename TInterval::coord_index_t>
+    inline auto find(const LevelCellArray<dim, TInterval, Topology>& lca, const xt::xtensor_fixed<coord_index_t, xt::xshape<dim>>& coord)
+        -> index_t
     {
         return detail::find_impl(lca, 0, lca[dim - 1].size(), coord, std::integral_constant<std::size_t, dim - 1>{});
     }
 
-    template <std::size_t dim, class TInterval, class coord_index_t = typename TInterval::coord_index_t, class index_t = typename TInterval::index_t>
-    inline auto
-    find_on_dim(const LevelCellArray<dim, TInterval>& lca, std::size_t d, std::size_t start_index, std::size_t end_index, coord_index_t coord)
+    template <std::size_t dim,
+              class TInterval,
+              std::size_t Topology,
+              class coord_index_t = typename TInterval::coord_index_t,
+              class index_t       = typename TInterval::index_t>
+    inline auto find_on_dim(const LevelCellArray<dim, TInterval, Topology>& lca,
+                            std::size_t d,
+                            std::size_t start_index,
+                            std::size_t end_index,
+                            coord_index_t coord)
     {
-        using lca_t        = const LevelCellArray<dim, TInterval>;
+        using lca_t        = const LevelCellArray<dim, TInterval, Topology>;
         using diff_t       = typename lca_t::const_iterator::difference_type;
         index_t find_index = detail::my_binary_search(lca[d].cbegin() + static_cast<diff_t>(start_index),
                                                       lca[d].cbegin() + static_cast<diff_t>(end_index),

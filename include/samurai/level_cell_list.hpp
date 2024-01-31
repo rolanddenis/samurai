@@ -13,6 +13,7 @@
 
 #include "cell.hpp"
 #include "list_of_intervals.hpp"
+#include "samurai.hpp"
 #include "samurai_config.hpp"
 
 namespace samurai
@@ -56,7 +57,7 @@ namespace samurai
     //////////////////////////////
     // LevelCellList definition //
     //////////////////////////////
-    template <std::size_t Dim, class TInterval = default_config::interval_t>
+    template <std::size_t Dim, class TInterval = default_config::interval_t, std::size_t Topology>
     class LevelCellList
     {
       public:
@@ -67,6 +68,8 @@ namespace samurai
         using coord_index_t       = typename interval_t::coord_index_t;
         using index_yz_t          = xt::xtensor_fixed<coord_index_t, xt::xshape<dim - 1>>;
         using list_interval_t     = ListOfIntervals<coord_index_t, index_t>;
+
+        static constexpr std::size_t topology = Topology;
 
         /// Sparse dim-1 array that points to the interval lists along the x
         /// axis.
@@ -86,7 +89,7 @@ namespace samurai
 
         void to_stream(std::ostream& os) const;
 
-        void add_cell(const Cell<dim, interval_t>& cell);
+        void add_cell(const Cell<dim, interval_t, Topology>& cell);
 
       private:
 
@@ -98,69 +101,69 @@ namespace samurai
     //////////////////////////////////
     // LevelCellList implementation //
     //////////////////////////////////
-    template <std::size_t Dim, class TInterval>
-    inline LevelCellList<Dim, TInterval>::LevelCellList()
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline LevelCellList<Dim, TInterval, Topology>::LevelCellList()
         : m_level{0}
     {
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline LevelCellList<Dim, TInterval>::LevelCellList(std::size_t level)
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline LevelCellList<Dim, TInterval, Topology>::LevelCellList(std::size_t level)
         : m_level{level}
     {
     }
 
     /// Constant access to the interval list at given dim-1 coordinates
-    template <std::size_t Dim, class TInterval>
-    inline auto LevelCellList<Dim, TInterval>::operator[](const index_yz_t& index) const -> const list_interval_t&
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline auto LevelCellList<Dim, TInterval, Topology>::operator[](const index_yz_t& index) const -> const list_interval_t&
     {
         return detail::access_grid_yz(m_grid_yz, index, std::integral_constant<std::size_t, dim - 1>{});
     }
 
     /// Mutable access to the interval list at given dim-1 coordinates
-    template <std::size_t Dim, class TInterval>
-    inline auto LevelCellList<Dim, TInterval>::operator[](const index_yz_t& index) -> list_interval_t&
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline auto LevelCellList<Dim, TInterval, Topology>::operator[](const index_yz_t& index) -> list_interval_t&
     {
         return detail::access_grid_yz(m_grid_yz, index, std::integral_constant<std::size_t, dim - 1>{});
     }
 
     /// Underlying sparse array
-    template <std::size_t Dim, class TInterval>
-    inline auto LevelCellList<Dim, TInterval>::grid_yz() const -> const grid_t&
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline auto LevelCellList<Dim, TInterval, Topology>::grid_yz() const -> const grid_t&
     {
         return m_grid_yz;
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline std::size_t LevelCellList<Dim, TInterval>::level() const
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline std::size_t LevelCellList<Dim, TInterval, Topology>::level() const
     {
         return m_level;
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline bool LevelCellList<Dim, TInterval>::empty() const
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline bool LevelCellList<Dim, TInterval, Topology>::empty() const
     {
         return m_grid_yz.empty();
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline void LevelCellList<Dim, TInterval>::to_stream(std::ostream& os) const
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline void LevelCellList<Dim, TInterval, Topology>::to_stream(std::ostream& os) const
     {
         os << "LevelCellList\n";
         os << "=============\n";
         os << "TODO\n";
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline void LevelCellList<Dim, TInterval>::add_cell(const Cell<dim, interval_t>& cell)
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline void LevelCellList<Dim, TInterval, Topology>::add_cell(const Cell<dim, interval_t, Topology>& cell)
     {
         using namespace xt::placeholders;
 
         (*this)[xt::view(cell.indices, xt::range(1, _))].add_point(cell.indices[0]);
     }
 
-    template <std::size_t Dim, class TInterval>
-    inline std::ostream& operator<<(std::ostream& out, const LevelCellList<Dim, TInterval>& level_cell_list)
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
+    inline std::ostream& operator<<(std::ostream& out, const LevelCellList<Dim, TInterval, Topology>& level_cell_list)
     {
         level_cell_list.to_stream(out);
         return out;

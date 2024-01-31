@@ -91,8 +91,8 @@ namespace samurai
             return expr;
         }
 
-        template <std::size_t dim>
-        inline auto operator()(const Cell<dim, interval_t>& cell) const
+        template <std::size_t dim, std::size_t topology>
+        inline auto operator()(const Cell<dim, interval_t, topology>& cell) const
         {
             return evaluate(std::make_index_sequence<sizeof...(CT)>(), cell);
         }

@@ -12,6 +12,7 @@
 #include "../level_cell_array.hpp"
 #include "../static_algorithm.hpp"
 #include "../utils.hpp"
+#include "samurai/samurai.hpp"
 #include "subset_node.hpp"
 
 namespace samurai
