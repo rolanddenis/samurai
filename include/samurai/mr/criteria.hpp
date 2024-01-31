@@ -40,7 +40,7 @@ namespace samurai
 
                 // Creating mask
                 auto mask = up_cells.apply(
-                    [this, &detail_shift_helper, &size, &eps, &detail](auto... c)
+                    [this, &detail_shift_helper, &eps, &detail](auto... c)
                     {
                         auto tmp_mask = ((xt::abs(this->template call_with_indices<Dimension>(detail_shift_helper, c)) < eps) && ...);
                         if constexpr (size == 1)
@@ -181,7 +181,7 @@ namespace samurai
 
                 // Creating mask
                 auto mask = up_cells.apply(
-                    [this, &detail_shift_helper, &size, &eps, &detail](auto... c)
+                    [this, &detail_shift_helper, &eps, &detail](auto... c)
                     {
                         auto tmp_mask = ((xt::abs(this->template call_with_indices<Dimension>(detail_shift_helper, c)) > eps) || ...);
                         if constexpr (size == 1)
