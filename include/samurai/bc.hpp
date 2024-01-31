@@ -39,18 +39,6 @@ namespace samurai
         function = 1,
     };
 
-    template <class F, class... CT>
-    class subset_operator;
-
-    template <class D, class Config>
-    class Mesh_base;
-
-    template <class Config>
-    class UniformMesh;
-
-    template <class mesh_t, class value_t, std::size_t size, bool SOA>
-    class Field;
-
     namespace detail
     {
         template <class T, std::size_t size>

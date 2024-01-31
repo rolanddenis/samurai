@@ -40,7 +40,7 @@ namespace samurai
     template <std::size_t dim_, class TInterval, std::size_t max_size_>
     class CellArray;
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology = ((1ul << Config::dim) - 1)>
     class Mesh_base;
 
     template <class F, class... CT>
@@ -52,4 +52,9 @@ namespace samurai
     template <std::size_t Dim, class TInterval, std::size_t Topology = (1ul << Dim) - 1>
     class LevelCellArray;
 
+    template <class Config>
+    class UniformMesh;
+
+    template <class mesh_t, class value_t, std::size_t size, bool SOA>
+    class Field;
 }

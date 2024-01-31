@@ -55,7 +55,7 @@ namespace samurai
         }
     };
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     class Mesh_base
     {
       public:
@@ -65,14 +65,15 @@ namespace samurai
 
         static constexpr std::size_t dim                  = config::dim;
         static constexpr std::size_t max_refinement_level = config::max_refinement_level;
+        static constexpr std::size_t topology             = Topology;
 
         using mesh_id_t  = typename config::mesh_id_t;
         using interval_t = typename config::interval_t;
         using value_t    = typename interval_t::value_t;
         using index_t    = typename interval_t::index_t;
 
-        using cell_t   = Cell<dim, interval_t>;
-        using cl_type  = CellList<dim, interval_t, max_refinement_level>;
+        using cell_t   = Cell<dim, interval_t, topology>;
+        using cl_type  = CellList<dim, interval_t, max_refinement_level, topology>;
         using lcl_type = typename cl_type::lcl_type;
 
         using ca_type  = CellArray<dim, interval_t, max_refinement_level>;
@@ -184,29 +185,29 @@ namespace samurai
 #endif
     };
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::derived_cast() & noexcept -> derived_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::derived_cast() & noexcept -> derived_type&
     {
         return *static_cast<derived_type*>(this);
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::derived_cast() const& noexcept -> const derived_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::derived_cast() const& noexcept -> const derived_type&
     {
         return *static_cast<const derived_type*>(this);
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::derived_cast() && noexcept -> derived_type
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::derived_cast() && noexcept -> derived_type
     {
         return *static_cast<derived_type*>(this);
     }
 
-    template <class D, class Config>
-    inline Mesh_base<D, Config>::Mesh_base(const samurai::Box<double, dim>& b,
-                                           std::size_t start_level,
-                                           std::size_t min_level,
-                                           std::size_t max_level)
+    template <class D, class Config, std::size_t Topology>
+    inline Mesh_base<D, Config, Topology>::Mesh_base(const samurai::Box<double, dim>& b,
+                                                     std::size_t start_level,
+                                                     std::size_t min_level,
+                                                     std::size_t max_level)
         : m_domain{start_level, b}
         , m_min_level{min_level}
         , m_max_level{max_level}
@@ -227,12 +228,12 @@ namespace samurai
         update_mesh_neighbour();
     }
 
-    template <class D, class Config>
-    inline Mesh_base<D, Config>::Mesh_base(const samurai::Box<double, dim>& b,
-                                           std::size_t start_level,
-                                           std::size_t min_level,
-                                           std::size_t max_level,
-                                           const std::array<bool, dim>& periodic)
+    template <class D, class Config, std::size_t Topology>
+    inline Mesh_base<D, Config, Topology>::Mesh_base(const samurai::Box<double, dim>& b,
+                                                     std::size_t start_level,
+                                                     std::size_t min_level,
+                                                     std::size_t max_level,
+                                                     const std::array<bool, dim>& periodic)
         : m_domain{start_level, b}
         , m_min_level{min_level}
         , m_max_level{max_level}
@@ -253,8 +254,8 @@ namespace samurai
         renumbering();
     }
 
-    template <class D, class Config>
-    inline Mesh_base<D, Config>::Mesh_base(const cl_type& cl, std::size_t min_level, std::size_t max_level)
+    template <class D, class Config, std::size_t Topology>
+    inline Mesh_base<D, Config, Topology>::Mesh_base(const cl_type& cl, std::size_t min_level, std::size_t max_level)
         : m_min_level{min_level}
         , m_max_level{max_level}
     {
@@ -270,8 +271,8 @@ namespace samurai
         renumbering();
     }
 
-    template <class D, class Config>
-    inline Mesh_base<D, Config>::Mesh_base(const cl_type& cl, const self_type& ref_mesh)
+    template <class D, class Config, std::size_t Topology>
+    inline Mesh_base<D, Config, Topology>::Mesh_base(const cl_type& cl, const self_type& ref_mesh)
         : m_domain(ref_mesh.m_domain)
         , m_min_level(ref_mesh.m_min_level)
         , m_max_level(ref_mesh.m_max_level)
@@ -288,144 +289,147 @@ namespace samurai
         renumbering();
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::cells() -> mesh_t&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::cells() -> mesh_t&
     {
         return m_cells;
     }
 
-    template <class D, class Config>
-    inline std::size_t Mesh_base<D, Config>::nb_cells(mesh_id_t mesh_id) const
+    template <class D, class Config, std::size_t Topology>
+    inline std::size_t Mesh_base<D, Config, Topology>::nb_cells(mesh_id_t mesh_id) const
     {
         return m_cells[mesh_id].nb_cells();
     }
 
-    template <class D, class Config>
-    inline std::size_t Mesh_base<D, Config>::nb_cells(std::size_t level, mesh_id_t mesh_id) const
+    template <class D, class Config, std::size_t Topology>
+    inline std::size_t Mesh_base<D, Config, Topology>::nb_cells(std::size_t level, mesh_id_t mesh_id) const
     {
         return m_cells[mesh_id][level].nb_cells();
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::operator[](mesh_id_t mesh_id) const -> const ca_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::operator[](mesh_id_t mesh_id) const -> const ca_type&
     {
         return m_cells[mesh_id];
     }
 
-    template <class D, class Config>
-    inline std::size_t Mesh_base<D, Config>::max_level() const
+    template <class D, class Config, std::size_t Topology>
+    inline std::size_t Mesh_base<D, Config, Topology>::max_level() const
     {
         return m_max_level;
     }
 
-    template <class D, class Config>
-    inline std::size_t Mesh_base<D, Config>::min_level() const
+    template <class D, class Config, std::size_t Topology>
+    inline std::size_t Mesh_base<D, Config, Topology>::min_level() const
     {
         return m_min_level;
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::domain() const -> const lca_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::domain() const -> const lca_type&
     {
         return m_domain;
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::subdomain() const -> const lca_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::subdomain() const -> const lca_type&
     {
         return m_subdomain;
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::get_union() const -> const ca_type&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::get_union() const -> const ca_type&
     {
         return m_union;
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <typename... T>
-    inline auto Mesh_base<D, Config>::get_interval(std::size_t level, const interval_t& interval, T... index) const -> const interval_t&
+    inline auto Mesh_base<D, Config, Topology>::get_interval(std::size_t level, const interval_t& interval, T... index) const
+        -> const interval_t&
     {
         return m_cells[mesh_id_t::reference].get_interval(level, interval, index...);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
+    inline auto Mesh_base<D, Config, Topology>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
         -> const interval_t&
     {
         return m_cells[mesh_id_t::reference].get_interval(level, interval, index);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config>::get_interval(std::size_t level, const xt::xexpression<E>& coord) const -> const interval_t&
+    inline auto Mesh_base<D, Config, Topology>::get_interval(std::size_t level, const xt::xexpression<E>& coord) const -> const interval_t&
     {
         return m_cells[mesh_id_t::reference].get_interval(level, coord);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <typename... T>
-    inline auto Mesh_base<D, Config>::get_index(std::size_t level, value_t i, T... index) const -> index_t
+    inline auto Mesh_base<D, Config, Topology>::get_index(std::size_t level, value_t i, T... index) const -> index_t
     {
         return m_cells[mesh_id_t::reference].get_index(level, i, index...);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const -> index_t
+    inline auto Mesh_base<D, Config, Topology>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const -> index_t
     {
         return m_cells[mesh_id_t::reference].get_index(level, i, others);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
+    inline auto Mesh_base<D, Config, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const
+        -> index_t
     {
         return m_cells[mesh_id_t::reference].get_index(level, coord);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <typename... T>
-    inline auto Mesh_base<D, Config>::get_cell(std::size_t level, value_t i, T... index) const -> cell_t
+    inline auto Mesh_base<D, Config, Topology>::get_cell(std::size_t level, value_t i, T... index) const -> cell_t
     {
         return m_cells[mesh_id_t::reference].get_cell(level, i, index...);
     }
 
     template <class D, class Config>
-    template <class E>
-    inline auto Mesh_base<D, Config>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& index) const -> cell_t
+    inline auto
+    Mesh_base<D, Config>::get_cell(std::size_t level, value_t i, const xt::xtensor_fixed<value_t, xt::xshape<dim - 1>>& index) const -> cell_t
     {
         return m_cells[mesh_id_t::reference].get_cell(level, i, index);
     }
 
-    template <class D, class Config>
+    template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const -> cell_t
+    inline auto Mesh_base<D, Config, Topology>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const
+        -> cell_t
     {
         return m_cells[mesh_id_t::reference].get_cell(level, coord);
     }
 
-    template <class D, class Config>
-    inline bool Mesh_base<D, Config>::is_periodic(std::size_t d) const
+    template <class D, class Config, std::size_t Topology>
+    inline bool Mesh_base<D, Config, Topology>::is_periodic(std::size_t d) const
     {
         return m_periodic[d];
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::periodicity() const -> const std::array<bool, dim>&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::periodicity() const -> const std::array<bool, dim>&
     {
         return m_periodic;
     }
 
-    template <class D, class Config>
-    inline auto Mesh_base<D, Config>::mpi_neighbourhood() -> std::vector<mpi_subdomain_t>&
+    template <class D, class Config, std::size_t Topology>
+    inline auto Mesh_base<D, Config, Topology>::mpi_neighbourhood() -> std::vector<mpi_subdomain_t>&
     {
         return m_mpi_neighbourhood;
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::swap(Mesh_base<D, Config>& mesh) noexcept
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::swap(Mesh_base<D, Config, Topology>& mesh) noexcept
     {
         using std::swap;
         swap(m_cells, mesh.m_cells);
@@ -437,14 +441,14 @@ namespace samurai
         swap(m_min_level, mesh.m_min_level);
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::update_sub_mesh()
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::update_sub_mesh()
     {
         this->derived_cast().update_sub_mesh_impl();
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::renumbering()
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::renumbering()
     {
         m_cells[mesh_id_t::reference].update_index();
 
@@ -470,8 +474,8 @@ namespace samurai
         }
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::update_mesh_neighbour()
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::update_mesh_neighbour()
     {
 #ifdef SAMURAI_WITH_MPI
         // send/recv the meshes of the neighbouring subdomains
@@ -495,8 +499,8 @@ namespace samurai
 #endif
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::construct_subdomain()
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::construct_subdomain()
     {
         // lcl_type lcl = {m_cells[mesh_id_t::cells].max_level()};
         lcl_type lcl = {m_max_level};
@@ -519,8 +523,8 @@ namespace samurai
         m_subdomain = {lcl};
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::construct_union()
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::construct_union()
     {
         std::size_t min_lvl = m_min_level;
         std::size_t max_lvl = m_max_level;
@@ -564,8 +568,9 @@ namespace samurai
         }
     }
 
-    template <class D, class Config>
-    void Mesh_base<D, Config>::partition_mesh([[maybe_unused]] std::size_t start_level, [[maybe_unused]] const Box<double, dim>& global_box)
+    template <class D, class Config, std::size_t Topology>
+    void Mesh_base<D, Config, Topology>::partition_mesh([[maybe_unused]] std::size_t start_level,
+                                                        [[maybe_unused]] const Box<double, dim>& global_box)
     {
 #ifdef SAMURAI_WITH_MPI
         using box_t   = Box<value_t, dim>;
@@ -664,8 +669,8 @@ namespace samurai
 #endif
     }
 
-    template <class D, class Config>
-    void Mesh_base<D, Config>::load_balancing()
+    template <class D, class Config, std::size_t Topology>
+    void Mesh_base<D, Config, Topology>::load_balancing()
     {
 #ifdef SAMURAI_WITH_MPI
         mpi::communicator world;
@@ -720,8 +725,8 @@ namespace samurai
 #endif
     }
 
-    template <class D, class Config>
-    void Mesh_base<D, Config>::load_transfer([[maybe_unused]] const std::vector<double>& load_fluxes)
+    template <class D, class Config, std::size_t Topology>
+    void Mesh_base<D, Config, Topology>::load_transfer([[maybe_unused]] const std::vector<double>& load_fluxes)
     {
 #ifdef SAMURAI_WITH_MPI
         mpi::communicator world;
@@ -741,8 +746,8 @@ namespace samurai
 #endif
     }
 
-    template <class D, class Config>
-    inline void Mesh_base<D, Config>::to_stream(std::ostream& os) const
+    template <class D, class Config, std::size_t Topology>
+    inline void Mesh_base<D, Config, Topology>::to_stream(std::ostream& os) const
     {
         for (std::size_t id = 0; id < static_cast<std::size_t>(mesh_id_t::count); ++id)
         {
@@ -753,10 +758,10 @@ namespace samurai
         }
     }
 
-    template <class D, class Config>
-    inline bool operator==(const Mesh_base<D, Config>& mesh1, const Mesh_base<D, Config>& mesh2)
+    template <class D, class Config, std::size_t Topology>
+    inline bool operator==(const Mesh_base<D, Config, Topology>& mesh1, const Mesh_base<D, Config, Topology>& mesh2)
     {
-        using mesh_id_t = typename Mesh_base<D, Config>::mesh_id_t;
+        using mesh_id_t = typename Mesh_base<D, Config, Topology>::mesh_id_t;
 
         if (mesh1.max_level() != mesh2.max_level() || mesh1.min_level() != mesh2.min_level())
         {
@@ -773,14 +778,14 @@ namespace samurai
         return true;
     }
 
-    template <class D, class Config>
-    inline bool operator!=(const Mesh_base<D, Config>& mesh1, const Mesh_base<D, Config>& mesh2)
+    template <class D, class Config, std::size_t Topology>
+    inline bool operator!=(const Mesh_base<D, Config, Topology>& mesh1, const Mesh_base<D, Config, Topology>& mesh2)
     {
         return !(mesh1 == mesh2);
     }
 
-    template <class D, class Config>
-    inline std::ostream& operator<<(std::ostream& out, const Mesh_base<D, Config>& mesh)
+    template <class D, class Config, std::size_t Topology>
+    inline std::ostream& operator<<(std::ostream& out, const Mesh_base<D, Config, Topology>& mesh)
     {
         mesh.to_stream(out);
         return out;
