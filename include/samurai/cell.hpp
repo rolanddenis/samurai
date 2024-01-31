@@ -28,6 +28,7 @@ namespace samurai
      *
      *  @tparam dim_ The dimension of the cell.
      *  @tparam TInterval The type of the interval.
+     *  @tparam Topology    Cell topology as an integer (by default a fully open cell of full dimension)
      */
     template <std::size_t dim_, class TInterval, std::size_t Topology = (1ul << dim_) - 1>
     struct Cell
@@ -117,13 +118,13 @@ namespace samurai
     template <std::size_t dim_, class TInterval, std::size_t Topology>
     inline auto Cell<dim_, TInterval, Topology>::center() const -> coords_t
     {
-        return length * (indices + 0.5);
+        return length * (indices + 0.5 * topology_as_xtensor<dim_>(Topology));
     }
 
     template <std::size_t dim_, class TInterval, std::size_t Topology>
     inline double Cell<dim_, TInterval, Topology>::center(std::size_t i) const
     {
-        return length * (indices[i] + 0.5);
+        return length * (indices[i] + 0.5 * topology_as_xtensor<dim_>(Topology)[i]);
     }
 
     template <std::size_t dim_, class TInterval, std::size_t Topology>
@@ -131,7 +132,7 @@ namespace samurai
     inline auto Cell<dim_, TInterval, Topology>::face_center(const Vector& direction) const -> coords_t
     {
         assert(abs(xt::sum(direction)(0)) == 1); // We only want a Cartesian unit vector
-        return center() + (length / 2) * direction;
+        return center() + (length / 2) * direction * topology_as_xtensor<dim_>(Topology);
     }
 
     template <std::size_t dim_, class TInterval, std::size_t Topology>
