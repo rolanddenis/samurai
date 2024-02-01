@@ -67,21 +67,22 @@ namespace samurai
      *  @tparam max_size_ The size of the array and the maximum levels (default
      * size is default_config::max_level).
      */
-    template <std::size_t dim_, class TInterval = default_config::interval_t, std::size_t max_size_ = default_config::max_level>
+    template <std::size_t dim_, class TInterval = default_config::interval_t, std::size_t max_size_ = default_config::max_level, std::size_t Topology>
     class CellArray
     {
       public:
 
         static constexpr auto dim      = dim_;
         static constexpr auto max_size = max_size_;
+        static constexpr auto topology = Topology;
 
-        using self_type  = CellArray<dim_, TInterval, max_size_>;
+        using self_type  = CellArray<dim_, TInterval, max_size_, Topology>;
         using interval_t = TInterval;
-        using cell_t     = Cell<dim, interval_t>;
+        using cell_t     = Cell<dim, interval_t, Topology>;
         using value_t    = typename interval_t::value_t;
         using index_t    = typename interval_t::index_t;
-        using lca_type   = LevelCellArray<dim, TInterval>;
-        using cl_type    = CellList<dim, TInterval, max_size>;
+        using lca_type   = LevelCellArray<dim, TInterval, Topology>;
+        using cl_type    = CellList<dim, TInterval, max_size, Topology>;
 
         using iterator               = CellArray_iterator<self_type, false>;
         using reverse_iterator       = CellArray_reverse_iterator<iterator>;
@@ -231,8 +232,8 @@ namespace samurai
     /**
      * Default contructor which sets the level for each LevelCellArray.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline CellArray<dim_, TInterval, max_size_>::CellArray()
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline CellArray<dim_, TInterval, max_size_, Topology>::CellArray()
     {
         for (std::size_t level = 0; level <= max_size; ++level)
         {
@@ -247,8 +248,8 @@ namespace samurai
      * @parma with_update_index A boolean indicating if the index of the
      * x-intervals must be computed.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline CellArray<dim_, TInterval, max_size_>::CellArray(const cl_type& cl, bool with_update_index)
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline CellArray<dim_, TInterval, max_size_, Topology>::CellArray(const cl_type& cl, bool with_update_index)
     {
         for (std::size_t level = 0; level <= max_size; ++level)
         {
@@ -261,14 +262,14 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::operator[](std::size_t i) const -> const lca_type&
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::operator[](std::size_t i) const -> const lca_type&
     {
         return m_cells[i];
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::operator[](std::size_t i) -> lca_type&
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::operator[](std::size_t i) -> lca_type&
     {
         return m_cells[i];
     }
@@ -280,71 +281,78 @@ namespace samurai
      * @param interval The desired x-interval.
      * @param index The desired indices for the other dimensions.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <typename... T>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_interval(std::size_t level, const interval_t& interval, T... index) const
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_interval(std::size_t level, const interval_t& interval, T... index) const
         -> const interval_t&
     {
         return m_cells[level].get_interval(interval, index...);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
     inline auto
-    CellArray<dim_, TInterval, max_size_>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
+    CellArray<dim_, TInterval, max_size_, Topology>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
         -> const interval_t&
     {
         return m_cells[level].get_interval(interval, index);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_interval(std::size_t level, const xt::xexpression<E>& coord) const
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_interval(std::size_t level, const xt::xexpression<E>& coord) const
         -> const interval_t&
     {
         return m_cells[level].get_interval(coord);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <typename... T>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_index(std::size_t level, value_t i, T... index) const -> index_t
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, value_t i, T... index) const -> index_t
     {
         return m_cells[level].get_index(i, index...);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const
         -> index_t
     {
         return m_cells[level].get_index(i, others);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
     {
         return m_cells[level].get_index(coord);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    template <class E>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
+    {
+        return m_cells[level].get_index(coord);
+    }
+
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <typename... T>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_cell(std::size_t level, value_t i, T... index) const -> cell_t
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_cell(std::size_t level, value_t i, T... index) const -> cell_t
     {
         return m_cells[level].get_cell(i, index...);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& others) const
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& others) const
         -> cell_t
     {
         return m_cells[level].get_cell(i, others);
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const -> cell_t
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const -> cell_t
     {
         return m_cells[level].get_cell(coord);
     }
@@ -353,8 +361,8 @@ namespace samurai
      * Return the number of cells which is the sum of each x-interval size
      * over the levels.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline std::size_t CellArray<dim_, TInterval, max_size_>::nb_cells() const
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline std::size_t CellArray<dim_, TInterval, max_size_, Topology>::nb_cells() const
     {
         std::size_t size = 0;
         for (std::size_t level = 0; level <= max_size; ++level)
@@ -370,8 +378,8 @@ namespace samurai
      *
      * @param level The level where to compute the number of cells
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline std::size_t CellArray<dim_, TInterval, max_size_>::nb_cells(std::size_t level) const
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline std::size_t CellArray<dim_, TInterval, max_size_, Topology>::nb_cells(std::size_t level) const
     {
         return m_cells[level].nb_cells();
     }
@@ -379,8 +387,8 @@ namespace samurai
     /**
      * Return the maximum level where the array entry is not empty.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline std::size_t CellArray<dim_, TInterval, max_size_>::max_level() const
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline std::size_t CellArray<dim_, TInterval, max_size_, Topology>::max_level() const
     {
         for (std::size_t level = max_size; level != std::size_t(-1); --level)
         {
@@ -395,8 +403,8 @@ namespace samurai
     /**
      * Return the minimum level where the array entry is not empty.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline std::size_t CellArray<dim_, TInterval, max_size_>::min_level() const
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline std::size_t CellArray<dim_, TInterval, max_size_, Topology>::min_level() const
     {
         for (std::size_t level = 0; level <= max_size; ++level)
         {
@@ -412,8 +420,8 @@ namespace samurai
      * Update the index in the x-intervals allowing to navigate in the
      * Field data structure.
      */
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline void CellArray<dim_, TInterval, max_size_>::update_index()
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline void CellArray<dim_, TInterval, max_size_, Topology>::update_index()
     {
         std::size_t acc_size = 0;
         for_each_interval(*this,
@@ -424,8 +432,8 @@ namespace samurai
                           });
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline void CellArray<dim_, TInterval, max_size_>::to_stream(std::ostream& os) const
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline void CellArray<dim_, TInterval, max_size_, Topology>::to_stream(std::ostream& os) const
     {
         for (std::size_t level = 0; level <= max_size; ++level)
         {
@@ -444,87 +452,88 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::begin() -> iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::begin() -> iterator
     {
         return iterator(this, m_cells[min_level()].begin());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::end() -> iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::end() -> iterator
     {
         return iterator(this, m_cells[max_level()].end());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::begin() const -> const_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::begin() const -> const_iterator
     {
         return cbegin();
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::end() const -> const_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::end() const -> const_iterator
     {
         return cend();
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::cbegin() const -> const_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::cbegin() const -> const_iterator
     {
         return const_iterator(this, m_cells[min_level()].cbegin());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::cend() const -> const_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::cend() const -> const_iterator
     {
         return const_iterator(this, m_cells[max_level()].cend());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rbegin() -> reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rbegin() -> reverse_iterator
     {
         return reverse_iterator(end());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rend() -> reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rend() -> reverse_iterator
     {
         return reverse_iterator(begin());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rbegin() const -> const_reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rbegin() const -> const_reverse_iterator
     {
         return rcbegin();
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rend() const -> const_reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rend() const -> const_reverse_iterator
     {
         return rcend();
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rcbegin() const -> const_reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rcbegin() const -> const_reverse_iterator
     {
         return const_reverse_iterator(cend());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline auto CellArray<dim_, TInterval, max_size_>::rcend() const -> const_reverse_iterator
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::rcend() const -> const_reverse_iterator
     {
         return const_reverse_iterator(cbegin());
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline std::ostream& operator<<(std::ostream& out, const CellArray<dim_, TInterval, max_size_>& cell_array)
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline std::ostream& operator<<(std::ostream& out, const CellArray<dim_, TInterval, max_size_, Topology>& cell_array)
     {
         cell_array.to_stream(out);
         return out;
     }
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
-    inline bool operator==(const CellArray<dim_, TInterval, max_size_>& ca1, const CellArray<dim_, TInterval, max_size_>& ca2)
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
+    inline bool
+    operator==(const CellArray<dim_, TInterval, max_size_, Topology>& ca1, const CellArray<dim_, TInterval, max_size_, Topology>& ca2)
     {
         if (ca1.max_level() != ca2.max_level() || ca1.min_level() != ca2.min_level())
         {

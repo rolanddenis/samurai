@@ -37,7 +37,7 @@ namespace samurai
     template <class TValue, class TIndex>
     struct Interval;
 
-    template <std::size_t dim_, class TInterval, std::size_t max_size_>
+    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology = ((1ul << dim_) - 1)>
     class CellArray;
 
     template <class D, class Config, std::size_t Topology = ((1ul << Config::dim) - 1)>

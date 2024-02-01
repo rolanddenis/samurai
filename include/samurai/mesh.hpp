@@ -76,7 +76,7 @@ namespace samurai
         using cl_type  = CellList<dim, interval_t, max_refinement_level, topology>;
         using lcl_type = typename cl_type::lcl_type;
 
-        using ca_type  = CellArray<dim, interval_t, max_refinement_level>;
+        using ca_type  = CellArray<dim, interval_t, max_refinement_level, topology>;
         using lca_type = typename ca_type::lca_type;
 
         using mesh_interval_t = typename ca_type::lca_type::mesh_interval_t;
