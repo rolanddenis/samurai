@@ -460,12 +460,12 @@ namespace samurai
             }
         };
 
-        template <std::size_t Dim, class TInterval>
-        struct get_arg_node_impl<LevelCellArray<Dim, TInterval>>
+        template <std::size_t Dim, class TInterval, std::size_t Topology>
+        struct get_arg_node_impl<LevelCellArray<Dim, TInterval, Topology>>
         {
-            using mesh_t = LevelCellArray<Dim, TInterval>;
+            using mesh_t = LevelCellArray<Dim, TInterval, Topology>;
 
-            decltype(auto) operator()(const LevelCellArray<Dim, TInterval>& r)
+            decltype(auto) operator()(const LevelCellArray<Dim, TInterval, Topology>& r)
             {
                 return mesh_node<mesh_t>(r);
             }

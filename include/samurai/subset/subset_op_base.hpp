@@ -598,10 +598,10 @@ namespace samurai
             }
         };
 
-        template <std::size_t Dim, class TInterval>
-        struct get_arg_impl<LevelCellArray<Dim, TInterval>>
+        template <std::size_t Dim, class TInterval, std::size_t Topology>
+        struct get_arg_impl<LevelCellArray<Dim, TInterval, Topology>>
         {
-            using mesh_t = LevelCellArray<Dim, TInterval>;
+            using mesh_t = LevelCellArray<Dim, TInterval, Topology>;
 
             template <class R>
             auto operator()(const R& r)

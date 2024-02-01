@@ -208,11 +208,11 @@ namespace samurai
     /////////////////////////
     // BcRegion definition //
     /////////////////////////
-    template <std::size_t dim, class TInterval>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1)>
     struct BcRegion
     {
         using direction_t = xt::xtensor_fixed<int, xt::xshape<dim>>;
-        using lca_t       = LevelCellArray<dim, TInterval>;
+        using lca_t       = LevelCellArray<dim, TInterval, Topology>;
         using region_t    = std::pair<std::vector<direction_t>, std::vector<lca_t>>;
 
         virtual ~BcRegion()                  = default;
@@ -229,10 +229,10 @@ namespace samurai
         BcRegion() = default;
     };
 
-    template <std::size_t dim, class TInterval>
-    struct Everywhere : public BcRegion<dim, TInterval>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1)>
+    struct Everywhere : public BcRegion<dim, TInterval, Topology>
     {
-        using base_t      = BcRegion<dim, TInterval>;
+        using base_t      = BcRegion<dim, TInterval, Topology>;
         using direction_t = typename base_t::direction_t;
         using lca_t       = typename base_t::lca_t;
         using region_t    = typename base_t::region_t;
@@ -243,12 +243,12 @@ namespace samurai
         std::unique_ptr<base_t> clone() const override;
     };
 
-    template <std::size_t dim, class TInterval, std::size_t nd>
-    class OnDirection : public BcRegion<dim, TInterval>
+    template <std::size_t dim, class TInterval, std::size_t nd, std::size_t Topology = ((1ul << dim) - 1)>
+    class OnDirection : public BcRegion<dim, TInterval, Topology>
     {
       public:
 
-        using base_t      = BcRegion<dim, TInterval>;
+        using base_t      = BcRegion<dim, TInterval, Topology>;
         using direction_t = typename base_t::direction_t;
         using lca_t       = typename base_t::lca_t;
         using region_t    = typename base_t::region_t;
@@ -263,12 +263,12 @@ namespace samurai
         std::array<direction_t, nd> m_d;
     };
 
-    template <std::size_t dim, class TInterval>
-    class CoordsRegion : public BcRegion<dim, TInterval>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1)>
+    class CoordsRegion : public BcRegion<dim, TInterval, Topology>
     {
       public:
 
-        using base_t      = BcRegion<dim, TInterval>;
+        using base_t      = BcRegion<dim, TInterval, Topology>;
         using direction_t = typename base_t::direction_t;
         using lca_t       = typename base_t::lca_t;
         using region_t    = typename base_t::region_t;
@@ -284,12 +284,12 @@ namespace samurai
         function_t m_func;
     };
 
-    template <std::size_t dim, class TInterval, class Set>
-    class SetRegion : public BcRegion<dim, TInterval>
+    template <std::size_t dim, class TInterval, class Set, std::size_t Topology = ((1ul << dim) - 1)>
+    class SetRegion : public BcRegion<dim, TInterval, Topology>
     {
       public:
 
-        using base_t      = BcRegion<dim, TInterval>;
+        using base_t      = BcRegion<dim, TInterval, Topology>;
         using direction_t = typename base_t::direction_t;
         using lca_t       = typename base_t::lca_t;
         using region_t    = typename base_t::region_t;
@@ -309,8 +309,8 @@ namespace samurai
     /////////////////////////////
 
     // Everywhere
-    template <std::size_t dim, class TInterval>
-    inline auto Everywhere<dim, TInterval>::get_region(const lca_t& domain) const -> region_t
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    inline auto Everywhere<dim, TInterval, Topology>::get_region(const lca_t& domain) const -> region_t
     {
         std::vector<direction_t> dir;
         std::vector<lca_t> lca;
@@ -349,21 +349,21 @@ namespace samurai
         return std::make_pair(dir, lca);
     }
 
-    template <std::size_t dim, class TInterval>
-    auto Everywhere<dim, TInterval>::clone() const -> std::unique_ptr<base_t>
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    auto Everywhere<dim, TInterval, Topology>::clone() const -> std::unique_ptr<base_t>
     {
         return std::make_unique<Everywhere>();
     }
 
     // OnDirection
-    template <std::size_t dim, class TInterval, std::size_t nd>
-    OnDirection<dim, TInterval, nd>::OnDirection(const std::array<direction_t, nd>& d)
+    template <std::size_t dim, class TInterval, std::size_t nd, std::size_t Topology>
+    OnDirection<dim, TInterval, nd, Topology>::OnDirection(const std::array<direction_t, nd>& d)
         : m_d(d)
     {
     }
 
-    template <std::size_t dim, class TInterval, std::size_t nd>
-    inline auto OnDirection<dim, TInterval, nd>::get_region(const lca_t& domain) const -> region_t
+    template <std::size_t dim, class TInterval, std::size_t nd, std::size_t Topology>
+    inline auto OnDirection<dim, TInterval, nd, Topology>::get_region(const lca_t& domain) const -> region_t
     {
         std::vector<direction_t> dir;
         std::vector<lca_t> lca;
@@ -401,28 +401,28 @@ namespace samurai
         return std::make_pair(dir, lca);
     }
 
-    template <std::size_t dim, class TInterval, std::size_t nd>
-    auto OnDirection<dim, TInterval, nd>::clone() const -> std::unique_ptr<base_t>
+    template <std::size_t dim, class TInterval, std::size_t nd, std::size_t Topology>
+    auto OnDirection<dim, TInterval, nd, Topology>::clone() const -> std::unique_ptr<base_t>
     {
         return std::make_unique<OnDirection>(m_d);
     }
 
     // CoordsRegion
-    template <std::size_t dim, class TInterval>
-    CoordsRegion<dim, TInterval>::CoordsRegion(const function_t& f)
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    CoordsRegion<dim, TInterval, Topology>::CoordsRegion(const function_t& f)
         : m_func(f)
     {
     }
 
-    template <std::size_t dim, class TInterval>
-    auto CoordsRegion<dim, TInterval>::clone() const -> std::unique_ptr<base_t>
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    auto CoordsRegion<dim, TInterval, Topology>::clone() const -> std::unique_ptr<base_t>
     {
         return std::make_unique<CoordsRegion>(m_func);
     }
 
     // TODO: must be implemented
-    template <std::size_t dim, class TInterval>
-    inline auto CoordsRegion<dim, TInterval>::get_region(const lca_t&) const -> region_t
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    inline auto CoordsRegion<dim, TInterval, Topology>::get_region(const lca_t&) const -> region_t
     {
         std::cerr << "CoordsRegion::get_region() not implemented" << std::endl;
         assert(false && "To be implemented");
@@ -430,20 +430,20 @@ namespace samurai
     }
 
     // SetRegion
-    template <std::size_t dim, class TInterval, class Set>
-    SetRegion<dim, TInterval, Set>::SetRegion(const Set& set)
+    template <std::size_t dim, class TInterval, class Set, std::size_t Topology>
+    SetRegion<dim, TInterval, Set, Topology>::SetRegion(const Set& set)
         : m_set(set)
     {
     }
 
-    template <std::size_t dim, class TInterval, class Set>
-    auto SetRegion<dim, TInterval, Set>::clone() const -> std::unique_ptr<base_t>
+    template <std::size_t dim, class TInterval, class Set, std::size_t Topology>
+    auto SetRegion<dim, TInterval, Set, Topology>::clone() const -> std::unique_ptr<base_t>
     {
         return std::make_unique<SetRegion>(m_set);
     }
 
-    template <std::size_t dim, class TInterval, class Set>
-    inline auto SetRegion<dim, TInterval, Set>::get_region(const lca_t& domain) const -> region_t
+    template <std::size_t dim, class TInterval, class Set, std::size_t Topology>
+    inline auto SetRegion<dim, TInterval, Set, Topology>::get_region(const lca_t& domain) const -> region_t
     {
         std::vector<direction_t> dir;
         std::vector<lca_t> lca;
@@ -463,43 +463,43 @@ namespace samurai
     ///////////////////////////////
     // BcRegion helper functions //
     ///////////////////////////////
-    template <std::size_t dim, class TInterval, class F, class... CT>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1), class F, class... CT>
     auto make_region(subset_operator<F, CT...> region)
     {
-        return SetRegion<dim, TInterval, subset_operator<F, CT...>>(region);
+        return SetRegion<dim, TInterval, subset_operator<F, CT...>, Topology>(region);
     }
 
-    template <std::size_t dim, class TInterval, class Func>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1), class Func>
     auto make_region(Func&& func)
     {
-        return CoordsRegion<dim, TInterval>(std::forward<Func>(func));
+        return CoordsRegion<dim, TInterval, Topology>(std::forward<Func>(func));
     }
 
-    template <std::size_t dim, class TInterval>
-    auto make_region(Everywhere<dim, TInterval>)
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    auto make_region(Everywhere<dim, TInterval, Topology>)
     {
-        return Everywhere<dim, TInterval>();
+        return Everywhere<dim, TInterval, Topology>();
     }
 
-    template <std::size_t dim, class TInterval, std::size_t nd>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1), std::size_t nd>
     auto make_region(const std::array<xt::xtensor_fixed<int, xt::xshape<dim>>, nd>& d)
     {
-        return OnDirection<dim, TInterval, nd>(d);
+        return OnDirection<dim, TInterval, nd, Topology>(d);
     }
 
-    template <std::size_t dim, class TInterval, class... dir_t>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1), class... dir_t>
     auto make_region(const dir_t&... d)
     {
         constexpr std::size_t nd = sizeof...(dir_t);
-        using final_type         = OnDirection<dim, TInterval, nd>;
+        using final_type         = OnDirection<dim, TInterval, nd, Topology>;
         using direction_t        = typename final_type::direction_t;
         return final_type(std::array<direction_t, nd>{d...});
     }
 
-    template <std::size_t dim, class TInterval>
+    template <std::size_t dim, class TInterval, std::size_t Topology = ((1ul << dim) - 1)>
     auto make_region(const xt::xtensor_fixed<int, xt::xshape<dim>>& d)
     {
-        return OnDirection<dim, TInterval, 1>({d});
+        return OnDirection<dim, TInterval, 1, Topology>({d});
     }
 
     ///////////////////
@@ -515,6 +515,8 @@ namespace samurai
         using mesh_t                      = typename Field::mesh_t;
         using interval_t                  = typename Field::interval_t;
 
+        static constexpr std::size_t topology = mesh_t::topology;
+
         using bcvalue_t    = BcValue<Field>;
         using bcvalue_impl = std::unique_ptr<bcvalue_t>;
         using direction_t  = typename bcvalue_t::direction_t;
@@ -522,7 +524,7 @@ namespace samurai
         using coords_t     = typename bcvalue_t::coords_t;
         using cell_t       = typename bcvalue_t::cell_t;
 
-        using bcregion_t = BcRegion<dim, interval_t>;
+        using bcregion_t = BcRegion<dim, interval_t, topology>;
         using lca_t      = typename bcregion_t::lca_t;
         using region_t   = typename bcregion_t::region_t;
 
@@ -582,7 +584,7 @@ namespace samurai
     Bc<Field>::Bc(const lca_t& domain, const bcvalue_t& bcv)
         : p_bcvalue(bcv.clone())
         , m_domain(domain)
-        , m_region(Everywhere<dim, interval_t>().get_region(domain))
+        , m_region(Everywhere<dim, interval_t, topology>().get_region(domain))
     {
     }
 
@@ -612,7 +614,7 @@ namespace samurai
     template <class Region>
     inline auto Bc<Field>::on(const Region& region)
     {
-        m_region = make_region<dim, interval_t>(region).get_region(m_domain);
+        m_region = make_region<dim, interval_t, topology>(region).get_region(m_domain);
         return this;
     }
 
@@ -620,7 +622,7 @@ namespace samurai
     template <class... Regions>
     inline auto Bc<Field>::on(const Regions&... regions)
     {
-        m_region = make_region<dim, interval_t>(regions...).get_region(m_domain);
+        m_region = make_region<dim, interval_t, topology>(regions...).get_region(m_domain);
         return this;
     }
 
@@ -706,20 +708,20 @@ namespace samurai
     /////////////////////////
     namespace detail
     {
-        template <std::size_t dim, class TInterval>
-        decltype(auto) get_mesh(const LevelCellArray<dim, TInterval>& mesh)
+        template <std::size_t dim, class TInterval, std::size_t Topology>
+        decltype(auto) get_mesh(const LevelCellArray<dim, TInterval, Topology>& mesh)
         {
             return mesh;
         }
 
-        template <class D, class Config>
-        decltype(auto) get_mesh(const Mesh_base<D, Config>& mesh)
+        template <class D, class Config, std::size_t Topology>
+        decltype(auto) get_mesh(const Mesh_base<D, Config, Topology>& mesh)
         {
             return mesh.domain();
         }
 
-        template <class Config>
-        decltype(auto) get_mesh(const UniformMesh<Config>& mesh)
+        template <class Config, std::size_t Topology>
+        decltype(auto) get_mesh(const UniformMesh<Config, Topology>& mesh)
         {
             using mesh_id_t = typename Config::mesh_id_t;
             return mesh[mesh_id_t::cells];
