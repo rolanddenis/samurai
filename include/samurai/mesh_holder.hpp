@@ -12,8 +12,9 @@ namespace samurai
     {
       public:
 
-        static constexpr std::size_t dim = Mesh::dim;
-        using interval_t                 = typename Mesh::interval_t;
+        static constexpr std::size_t dim      = Mesh::dim;
+        static constexpr std::size_t topology = Mesh::topology;
+        using interval_t                      = typename Mesh::interval_t;
 
         explicit hold(Mesh& mesh)
             : m_mesh(mesh)

@@ -38,6 +38,7 @@ namespace mpi = boost::mpi;
 
 #include "algorithm.hpp"
 #include "cell.hpp"
+#include "samurai.hpp"
 #include "utils.hpp"
 
 namespace samurai
@@ -176,9 +177,6 @@ namespace samurai
         bool by_level   = false;
         bool by_mesh_id = false;
     };
-
-    template <class Config>
-    class UniformMesh;
 
     template <class Config>
     struct Hdf5Options<UniformMesh<Config>>

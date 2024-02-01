@@ -17,8 +17,8 @@ namespace samurai
     // for_each_level implementation //
     ///////////////////////////////////
 
-    template <std::size_t dim, class TInterval, std::size_t max_size, class Func>
-    inline void for_each_level(const CellArray<dim, TInterval, max_size>& ca, Func&& f, bool include_empty_levels = false)
+    template <std::size_t dim, class TInterval, std::size_t max_size, std::size_t Topology, class Func>
+    inline void for_each_level(const CellArray<dim, TInterval, max_size, Topology>& ca, Func&& f, bool include_empty_levels = false)
     {
         for (std::size_t level = ca.min_level(); level <= ca.max_level(); ++level)
         {
@@ -64,8 +64,8 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim, class TInterval, std::size_t max_size, class Func>
-    inline void for_each_interval(const CellArray<dim, TInterval, max_size>& ca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t max_size, std::size_t Topology, class Func>
+    inline void for_each_interval(const CellArray<dim, TInterval, max_size, Topology>& ca, Func&& f)
     {
         for (std::size_t level = ca.min_level(); level <= ca.max_level(); ++level)
         {
@@ -73,8 +73,8 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim, class TInterval, std::size_t max_size, class Func>
-    inline void for_each_interval(CellArray<dim, TInterval, max_size>& ca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t max_size, std::size_t Topology, class Func>
+    inline void for_each_interval(CellArray<dim, TInterval, max_size, Topology>& ca, Func&& f)
     {
         for (std::size_t level = ca.min_level(); level <= ca.max_level(); ++level)
         {
@@ -117,8 +117,8 @@ namespace samurai
         }
     }
 
-    template <std::size_t dim, class TInterval, std::size_t max_size, class Func>
-    inline void for_each_meshinterval(const CellArray<dim, TInterval, max_size>& ca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t max_size, std::size_t Topology, class Func>
+    inline void for_each_meshinterval(const CellArray<dim, TInterval, max_size, Topology>& ca, Func&& f)
     {
         for (std::size_t level = ca.min_level(); level <= ca.max_level(); ++level)
         {
@@ -149,7 +149,7 @@ namespace samurai
     template <std::size_t dim, class TInterval, std::size_t Topology, class Func>
     inline void for_each_cell(const LevelCellArray<dim, TInterval, Topology>& lca, Func&& f)
     {
-        using cell_t        = Cell<dim, TInterval>;
+        using cell_t        = Cell<dim, TInterval, Topology>;
         using index_value_t = typename cell_t::value_t;
         typename cell_t::indices_t index;
 
@@ -172,7 +172,7 @@ namespace samurai
     template <std::size_t dim, class TInterval, std::size_t Topology, class Func, class F, class... CT>
     inline void for_each_cell(const LevelCellArray<dim, TInterval, Topology>& lca, subset_operator<F, CT...> set, Func&& f)
     {
-        using cell_t        = Cell<dim, TInterval>;
+        using cell_t        = Cell<dim, TInterval, Topology>;
         using index_value_t = typename cell_t::value_t;
         typename cell_t::indices_t index;
 
@@ -191,8 +191,8 @@ namespace samurai
             });
     }
 
-    template <std::size_t dim, class TInterval, std::size_t max_size, class Func>
-    inline void for_each_cell(const CellArray<dim, TInterval, max_size>& ca, Func&& f)
+    template <std::size_t dim, class TInterval, std::size_t max_size, std::size_t Topology, class Func>
+    inline void for_each_cell(const CellArray<dim, TInterval, max_size, Topology>& ca, Func&& f)
     {
         for (std::size_t level = ca.min_level(); level <= ca.max_level(); ++level)
         {
@@ -220,7 +220,7 @@ namespace samurai
     inline void for_each_cell(const Mesh& mesh, std::size_t level, const typename Mesh::interval_t& i, const coord_type& index, Func&& f)
     {
         static constexpr std::size_t dim = Mesh::dim;
-        using cell_t                     = Cell<dim, typename Mesh::interval_t>;
+        using cell_t                     = Cell<dim, typename Mesh::interval_t, Mesh::topology>;
         using index_value_t              = typename cell_t::value_t;
         typename cell_t::indices_t coord;
 

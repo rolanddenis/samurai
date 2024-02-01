@@ -76,7 +76,7 @@ namespace samurai
             static constexpr std::size_t dim = mesh_t::dim;
             using interval_t                 = typename mesh_t::interval_t;
             using index_t                    = typename interval_t::index_t;
-            using cell_t                     = Cell<dim, interval_t>;
+            using cell_t                     = Cell<dim, interval_t, mesh_t::topology>;
             using data_type                  = xt::xtensor<value_t, 1>;
 
             inline const value_t& operator[](index_t i) const
@@ -142,7 +142,7 @@ namespace samurai
             static constexpr std::size_t dim = mesh_t::dim;
             using interval_t                 = typename mesh_t::interval_t;
             using index_t                    = typename interval_t::index_t;
-            using cell_t                     = Cell<dim, interval_t>;
+            using cell_t                     = Cell<dim, interval_t, mesh_t::topology>;
             using data_type                  = xt::xtensor<value_t, 2>;
 
             inline auto operator[](index_t i) const
@@ -238,7 +238,7 @@ namespace samurai
         {
             static constexpr std::size_t dim = mesh_t::dim;
             using interval_t                 = typename mesh_t::interval_t;
-            using cell_t                     = Cell<dim, interval_t>;
+            using cell_t                     = Cell<dim, interval_t, mesh_t::topology>;
             using data_type                  = xt::xtensor<value_t, 2>;
 
             inline auto operator[](std::size_t i) const
@@ -831,7 +831,7 @@ namespace samurai
               bool SOA = false,
               class mesh_t,
               class Func,
-              typename = std::enable_if_t<std::is_invocable_v<Func, typename Cell<mesh_t::dim, typename mesh_t::interval_t>::coords_t>>>
+              typename = std::enable_if_t<std::is_invocable_v<Func, typename Cell<mesh_t::dim, typename mesh_t::interval_t, mesh_t::topology>::coords_t>>>
     auto make_field(std::string name, mesh_t& mesh, Func&& f)
     {
         auto field = make_field<value_t, size, SOA, mesh_t>(name, mesh);
@@ -849,7 +849,7 @@ namespace samurai
               bool SOA = false,
               class mesh_t,
               class Func,
-              typename = std::enable_if_t<std::is_invocable_v<Func, typename Cell<mesh_t::dim, typename mesh_t::interval_t>::coords_t>>>
+              typename = std::enable_if_t<std::is_invocable_v<Func, typename Cell<mesh_t::dim, typename mesh_t::interval_t, mesh_t::topology>::coords_t>>>
     auto make_field(std::string name, mesh_t& mesh, Func&& f)
     {
         using default_value_t = double;
