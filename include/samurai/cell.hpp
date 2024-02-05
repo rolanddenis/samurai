@@ -69,7 +69,7 @@ namespace samurai
         /// The index where the cell is in the data array.
         index_t index = 0;
 
-        /// The length of the cell.
+        /// The length of the cell (for a cell of full dimension)
         double length = 0;
     };
 

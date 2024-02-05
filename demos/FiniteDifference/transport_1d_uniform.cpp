@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
 
     constexpr std::size_t dim      = 1; // cppcheck-suppress unreadVariable
     using Config                   = samurai::UniformConfig<dim, 2>;
-    constexpr std::size_t topology = 0;
+    constexpr std::size_t topology = 0; // 0 for point, 1 for cell
 
     // Simulation parameters
     double left_box   = -2;

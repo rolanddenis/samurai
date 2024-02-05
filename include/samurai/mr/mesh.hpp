@@ -11,6 +11,7 @@
 
 #include "../box.hpp"
 #include "../mesh.hpp"
+#include "../samurai.hpp"
 #include "../samurai_config.hpp"
 #include "../subset/node_op.hpp"
 #include "../subset/subset_op.hpp"
@@ -53,16 +54,18 @@ namespace samurai
         using mesh_id_t                  = MRMeshId;
     };
 
-    template <class Config>
-    class MRMesh : public samurai::Mesh_base<MRMesh<Config>, Config>
+    template <class Config, std::size_t Topology>
+    class MRMesh : public samurai::Mesh_base<MRMesh<Config, Topology>, Config, Topology>
     {
       public:
 
-        using base_type                  = samurai::Mesh_base<MRMesh<Config>, Config>;
-        using self_type                  = MRMesh<Config>;
-        using mpi_subdomain_t            = typename base_type::mpi_subdomain_t;
-        using config                     = typename base_type::config;
-        static constexpr std::size_t dim = config::dim;
+        using base_type       = samurai::Mesh_base<MRMesh<Config, Topology>, Config, Topology>;
+        using self_type       = MRMesh<Config, Topology>;
+        using mpi_subdomain_t = typename base_type::mpi_subdomain_t;
+        using config          = typename base_type::config;
+
+        static constexpr std::size_t dim      = config::dim;
+        static constexpr std::size_t topology = Topology;
 
         using mesh_id_t  = typename base_type::mesh_id_t;
         using interval_t = typename base_type::interval_t;
@@ -84,35 +87,35 @@ namespace samurai
         xt::xtensor<bool, 1> exists(mesh_id_t type, std::size_t level, interval_t interval, T... index) const;
     };
 
-    template <class Config>
-    inline MRMesh<Config>::MRMesh(const cl_type& cl, const self_type& ref_mesh)
+    template <class Config, std::size_t Topology>
+    inline MRMesh<Config, Topology>::MRMesh(const cl_type& cl, const self_type& ref_mesh)
         : base_type(cl, ref_mesh)
     {
     }
 
-    template <class Config>
-    inline MRMesh<Config>::MRMesh(const cl_type& cl, std::size_t min_level, std::size_t max_level)
+    template <class Config, std::size_t Topology>
+    inline MRMesh<Config, Topology>::MRMesh(const cl_type& cl, std::size_t min_level, std::size_t max_level)
         : base_type(cl, min_level, max_level)
     {
     }
 
-    template <class Config>
-    inline MRMesh<Config>::MRMesh(const samurai::Box<double, dim>& b, std::size_t min_level, std::size_t max_level)
+    template <class Config, std::size_t Topology>
+    inline MRMesh<Config, Topology>::MRMesh(const samurai::Box<double, dim>& b, std::size_t min_level, std::size_t max_level)
         : base_type(b, max_level, min_level, max_level)
     {
     }
 
-    template <class Config>
-    inline MRMesh<Config>::MRMesh(const samurai::Box<double, dim>& b,
-                                  std::size_t min_level,
-                                  std::size_t max_level,
-                                  const std::array<bool, dim>& periodic)
+    template <class Config, std::size_t Topology>
+    inline MRMesh<Config, Topology>::MRMesh(const samurai::Box<double, dim>& b,
+                                            std::size_t min_level,
+                                            std::size_t max_level,
+                                            const std::array<bool, dim>& periodic)
         : base_type(b, max_level, min_level, max_level, periodic)
     {
     }
 
-    template <class Config>
-    inline void MRMesh<Config>::update_sub_mesh_impl()
+    template <class Config, std::size_t Topology>
+    inline void MRMesh<Config, Topology>::update_sub_mesh_impl()
     {
 #ifdef SAMURAI_WITH_MPI
         mpi::communicator world;
@@ -499,9 +502,9 @@ namespace samurai
         // }
     }
 
-    template <class Config>
+    template <class Config, std::size_t Topology>
     template <typename... T>
-    inline xt::xtensor<bool, 1> MRMesh<Config>::exists(mesh_id_t type, std::size_t level, interval_t interval, T... index) const
+    inline xt::xtensor<bool, 1> MRMesh<Config, Topology>::exists(mesh_id_t type, std::size_t level, interval_t interval, T... index) const
     {
         using coord_index_t      = typename interval_t::coord_index_t;
         const auto& lca          = this->cells()[type][level];

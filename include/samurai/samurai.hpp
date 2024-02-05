@@ -55,6 +55,9 @@ namespace samurai
     template <class Config, std::size_t Topology = ((1ul << Config::dim) - 1)>
     class UniformMesh;
 
+    template <class Config, std::size_t Topology = ((1ul << Config::dim) - 1)>
+    class MRMesh;
+
     template <class mesh_t, class value_t, std::size_t size, bool SOA>
     class Field;
 }
