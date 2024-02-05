@@ -1,6 +1,12 @@
-// Copyright 2021 SAMURAI TEAM. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+/** Advection equation in 1D using finite volume scheme and different cell topology
+ *
+ * The idea is to precompute and store the flux in a dedicated field whose mesh is associated to faces instead of cells.
+ * There is not much point in that case since it doesn't improve the performance or can be done in another way
+ * in Samurai but it illustrates (and test) the simultaneous usage of multiple meshes associated to different topology.
+ *
+ * This 1D case is basic and works without using any topological dedicated features (see the nD versions for a more generic implementation).
+ */
+
 #include <CLI/CLI.hpp>
 
 #include <xtensor/xfixed.hpp>
@@ -18,6 +24,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+/// Exact solution depending on position x, time t and speed c
 template <typename T>
 auto exact_u(T const& x, double t, double c)
 {
@@ -28,6 +35,7 @@ auto exact_u(T const& x, double t, double c)
     return 1. * (abs(x - center) <= radius);
 }
 
+/// Initializing a mesh at initial time t = 0 depending on the speed c
 template <class Mesh>
 auto init(Mesh& mesh, double c)
 {
@@ -43,6 +51,7 @@ auto init(Mesh& mesh, double c)
     return u;
 }
 
+/// Computing the ord-norm error for a given field at time t (and for speed c)
 template <class Field>
 double u_error(Field const& u, double c, double t, double ord = 2)
 {
@@ -57,6 +66,7 @@ double u_error(Field const& u, double c, double t, double ord = 2)
     return std::pow(error, 1. / ord);
 }
 
+/// Saving field in hdf5 format
 template <class Field>
 void save(const fs::path& path, const std::string& filename, const Field& u, const std::string& suffix = "")
 {
@@ -95,8 +105,6 @@ void update_face_mesh(MeshCell const& mesh_cell, MeshFace& mesh_face, Field& fie
 
     // Creates a new field instead of updating old one (will be filled anyway)
     Field new_field("new_f", mesh_face);
-
-    // new_field.fill(0.); // Uncomment to avoid NaN, but there is a bug anyway
 
     using std::swap;
     swap(new_field.array(), field.array());
@@ -169,7 +177,8 @@ int main(int argc, char* argv[])
 
     const samurai::Box<double, dim> box({left_box}, {right_box});
     samurai::MRMesh<Config, 1> mesh_cell(box, min_level, max_level, {is_periodic});
-    samurai::MRMesh<Config, 0> mesh_face(box, min_level, max_level, {is_periodic});
+    samurai::MRMesh<Config, 0> mesh_face(box, min_level, max_level, {is_periodic}); // Topological parameter (the 3rd template) isn't used
+                                                                                    // in this code
 
     double dt            = cfl / (1 << max_level);
     const double dt_save = Tf / static_cast<double>(nfiles);
@@ -184,7 +193,6 @@ int main(int argc, char* argv[])
         // same as (just to test OnDirection instead of Everywhere)
         // samurai::make_bc<samurai::Dirichlet>(u, 0.);
     }
-    auto unp1 = samurai::make_field<double, 1>("unp1", mesh_cell);
     auto flux = samurai::make_field<double, 1>("flux", mesh_face);
 
     auto MRadaptation = samurai::make_MRAdapt(u);
@@ -206,26 +214,17 @@ int main(int argc, char* argv[])
         }
 
         samurai::update_ghost_mr(u);
-
         update_face_mesh(mesh_cell, mesh_face, flux);
-        update_flux(mesh_cell, u, a, flux);
-
-        unp1.resize();
-        unp1.fill(0);
+        update_flux(mesh_face, u, a, flux);
 
         // Apply one time step
-#if 0
-        unp1 = u - dt * samurai::upwind(a, u);
-#else
         samurai::for_each_interval(mesh_cell,
                                    [&](std::size_t level, const auto& interval, const auto& index)
                                    {
-                                       unp1(level, interval, index) = u(level, interval, index)
-                                                                    - dt * (flux(level, interval + 1, index) - flux(level, interval, index))
-                                                                          / samurai::cell_length(level);
+                                       u(level, interval, index) = u(level, interval, index)
+                                                                 - dt * (flux(level, interval + 1, index) - flux(level, interval, index))
+                                                                       / samurai::cell_length(level);
                                    });
-#endif
-        std::swap(u.array(), unp1.array());
 
         double error = u_error(u, a, t);
         std::cout << fmt::format("iteration {}: t = {}, dt = {}, error = {}", nt++, t, dt, error);
