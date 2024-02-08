@@ -66,7 +66,7 @@ template <typename Tensor>
 auto exact_rho(Tensor const& x, double t, double speed_factor)
 {
     const double radius = .2; // Radius of the initial shape
-    const auto shape    = x.shape();
+    auto shape          = x.shape();
     auto rho            = xt::empty_like(xt::view(x, 0));
 
     if (shape[0] == 1)
@@ -77,11 +77,16 @@ auto exact_rho(Tensor const& x, double t, double speed_factor)
     }
     else
     {
-        const double theta            = speed_factor * t;
-        xt::xtensor<double, 1> center = xt::zeros<double>({shape[0]});
-        center(0)                     = std::cos(theta);
-        center(1)                     = std::sin(theta);
-        rho                           = xt::norm_sq(x - center, {0}) <= radius * radius;
+        for (std::size_t i = 1; i < shape.size(); ++i)
+        {
+            shape[i] = 1;
+        }
+
+        const double theta = speed_factor * t;
+        auto center        = xt::eval(xt::zeros<double>(shape));
+        center(0)          = std::cos(theta);
+        center(1)          = std::sin(theta);
+        rho                = xt::norm_sq(x - center, {0}) <= radius * radius;
     }
 
     return rho;
@@ -93,12 +98,12 @@ double rho_error(Field const& rho, double t, double speed_factor, double ord = 2
 {
     double error = 0.;
 
-    samurai::for_each_cell(rho.mesh(),
-                           [&](auto& cell)
-                           {
-                               error += xt::sum(xt::pow(xt::abs(rho[cell] - exact_rho(cell.center(), t, speed_factor)), ord)
-                                                * std::pow(cell.length, rho.dim))();
-                           });
+    samurai::for_each_cell_interval(rho.mesh(),
+                                    [&](auto const& cells)
+                                    {
+                                        error += xt::sum(xt::pow(xt::abs(rho(cells) - exact_rho(cells.center(), t, speed_factor)), ord)
+                                                         * std::pow(cells.length, rho.dim))();
+                                    });
 
     return std::pow(error, 1. / ord);
 }
@@ -107,6 +112,7 @@ double rho_error(Field const& rho, double t, double speed_factor, double ord = 2
 template <class Field>
 void save(const fs::path& path, const std::string& filename, const Field& rho, const std::string& suffix = "")
 {
+    std::cout << "Saving... " << std::flush;
     auto mesh   = rho.mesh();
     auto level_ = samurai::make_field<std::size_t, 1>("level", mesh);
 
@@ -122,6 +128,7 @@ void save(const fs::path& path, const std::string& filename, const Field& rho, c
                            });
 
     samurai::save(path, fmt::format("{}{}", filename, suffix), mesh, rho, level_);
+    std::cout << "Done." << std::endl;
 }
 
 /// Initializing a field at initial time t = 0 depending on the given speed factor
@@ -130,11 +137,11 @@ auto init_rho(Mesh& mesh, double speed_factor)
 {
     auto rho = samurai::make_field<double, 1>("rho", mesh);
 
-    samurai::for_each_cell(mesh,
-                           [&](auto& cell)
-                           {
-                               rho[cell] = exact_rho(cell.center(), 0., speed_factor)(0);
-                           });
+    samurai::for_each_cell_interval(mesh,
+                                    [&](auto const& cells)
+                                    {
+                                        rho(cells) = exact_rho(cells.center(), 0., speed_factor);
+                                    });
 
     return rho;
 }
@@ -376,12 +383,14 @@ void run_simulation(Options const& options)
 
     ///////////////////////////////////////////////////////////////////////////
     // Multi-resolution adaptation
+    std::cout << "Initializing MR... " << std::flush;
     auto MRadaptation = samurai::make_MRAdapt(rho);
     MRadaptation(options.mr_epsilon, options.mr_regularity);
-    save(options.path, options.filename, rho, "_init");
+    std::cout << "Done." << std::endl;
 
     ///////////////////////////////////////////////////////////////////////////
     // Time loop
+    save(options.path, options.filename, rho, "_init");
     std::size_t nsave = 1;
     std::size_t nt    = 0;
 
