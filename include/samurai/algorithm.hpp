@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "cell.hpp"
+#include "cell_interval.hpp"
 #include "mesh_holder.hpp"
 #include "mesh_interval.hpp"
 #include "samurai.hpp"
@@ -100,6 +101,25 @@ namespace samurai
             {
                 f(set.level(), i, index);
             });
+    }
+
+    ///////////////////////////////////////////
+    // for_each_cell_interval implementation //
+    ///////////////////////////////////////////
+    template <typename Collection, typename Func>
+    inline auto for_each_cell_interval(Collection const& collection, Func&& f)
+    //    -> std::void_t<decltype(for_each_interval(collection, [](auto...){}))>
+    {
+        constexpr std::size_t dim      = Collection::dim;
+        constexpr std::size_t topology = Collection::topology;
+        using interval_t               = typename Collection::interval_t;
+        using cell_interval_t          = CellInterval<dim, interval_t, topology>;
+
+        for_each_interval(collection,
+                          [&f](const auto& level, const auto& interval, const auto& indices)
+                          {
+                              f(cell_interval_t(level, interval, indices));
+                          });
     }
 
     //////////////////////////////////////////
@@ -247,6 +267,15 @@ namespace samurai
             {
                 for_each_cell(mesh, set.level(), i, index, std::forward<Func>(f));
             });
+    }
+
+    template <std::size_t dim, typename TInterval, std::size_t Topology, typename Func>
+    inline void for_each_cell(const CellInterval<dim, TInterval, Topology>& cell_interval, Func&& f)
+    {
+        for (std::size_t i = 0; i < cell_interval.size(); ++i)
+        {
+            f(cell_interval[i]);
+        }
     }
 
     /////////////////////////

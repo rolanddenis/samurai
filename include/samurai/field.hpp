@@ -19,6 +19,7 @@
 #include "bc.hpp"
 #include "cell.hpp"
 #include "cell_array.hpp"
+#include "cell_interval.hpp"
 #include "field_expression.hpp"
 #include "mesh_holder.hpp"
 #include "numeric/gauss_legendre.hpp"
@@ -77,6 +78,7 @@ namespace samurai
             using interval_t                 = typename mesh_t::interval_t;
             using index_t                    = typename interval_t::index_t;
             using cell_t                     = Cell<dim, interval_t, mesh_t::topology>;
+            using cell_interval_t            = CellInterval<dim, interval_t, mesh_t::topology>;
             using data_type                  = xt::xtensor<value_t, 1>;
 
             inline const value_t& operator[](index_t i) const
@@ -125,6 +127,16 @@ namespace samurai
                                 xt::range(interval_tmp.index + interval.start, interval_tmp.index + interval.end, interval.step));
             }
 
+            inline auto operator()(const cell_interval_t& cell_interval)
+            {
+                return operator()(cell_interval.level, cell_interval.interval, cell_interval.indices);
+            }
+
+            inline auto operator()(const cell_interval_t& cell_interval) const
+            {
+                return operator()(cell_interval.level, cell_interval.interval, cell_interval.indices);
+            }
+
             void resize()
             {
                 this->derived_cast().m_data.resize({this->derived_cast().mesh().nb_cells()});
@@ -143,6 +155,7 @@ namespace samurai
             using interval_t                 = typename mesh_t::interval_t;
             using index_t                    = typename interval_t::index_t;
             using cell_t                     = Cell<dim, interval_t, mesh_t::topology>;
+            using cell_interval_t            = CellInterval<dim, interval_t, mesh_t::topology>;
             using data_type                  = xt::xtensor<value_t, 2>;
 
             inline auto operator[](index_t i) const
@@ -189,6 +202,16 @@ namespace samurai
                 auto interval_tmp = this->derived_cast().get_interval("READ", level, interval, index...);
                 return xt::view(this->derived_cast().m_data,
                                 xt::range(interval_tmp.index + interval.start, interval_tmp.index + interval.end, interval.step));
+            }
+
+            inline auto operator()(const cell_interval_t& cell_interval)
+            {
+                return operator()(cell_interval.level, cell_interval.interval, cell_interval.indices);
+            }
+
+            inline auto operator()(const cell_interval_t& cell_interval) const
+            {
+                return operator()(cell_interval.level, cell_interval.interval, cell_interval.indices);
             }
 
             template <class... T>

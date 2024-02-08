@@ -149,14 +149,14 @@ namespace samurai
         return out;
     }
 
-    template <std::size_t dim, class TInterval>
-    inline bool operator==(const Cell<dim, TInterval>& c1, const Cell<dim, TInterval>& c2)
+    template <std::size_t dim, class TInterval std::size_t Topology>
+    inline bool operator==(const Cell<dim, TInterval, Topology>& c1, const Cell<dim, TInterval, Topology>& c2)
     {
         return !(c1.level != c2.level || c1.indices != c2.indices || c1.index != c2.index || c1.length != c2.length);
     }
 
-    template <std::size_t dim, class TInterval>
-    inline bool operator!=(const Cell<dim, TInterval>& c1, const Cell<dim, TInterval>& c2)
+    template <std::size_t dim, class TInterval std::size_t Topology>
+    inline bool operator!=(const Cell<dim, TInterval, Topology>& c1, const Cell<dim, TInterval, Topology>& c2)
     {
         return !(c1 == c2);
     }
