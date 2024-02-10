@@ -101,6 +101,20 @@ namespace samurai
                 return this->derived_cast().m_data[static_cast<std::size_t>(cell.index)];
             }
 
+            inline auto operator[](const cell_interval_t& cell_interval) const
+            {
+                auto const& interval = cell_interval.interval;
+                return xt::view(this->derived_cast().m_data,
+                                xt::range(interval.index + interval.start, interval.index + interval.end, interval.step));
+            }
+
+            inline auto operator[](const cell_interval_t& cell_interval)
+            {
+                auto const& interval = cell_interval.interval;
+                return xt::view(this->derived_cast().m_data,
+                                xt::range(interval.index + interval.start, interval.index + interval.end, interval.step));
+            }
+
             inline const value_t& operator()(std::size_t i) const
             {
                 return this->derived_cast().m_data[i];
@@ -126,6 +140,9 @@ namespace samurai
                 return xt::view(this->derived_cast().m_data,
                                 xt::range(interval_tmp.index + interval.start, interval_tmp.index + interval.end, interval.step));
             }
+
+            // TODO: operator() for cell_t (when storage index may be wrong)
+            // inline auto operator()(const cell_t& cell)
 
             inline auto operator()(const cell_interval_t& cell_interval)
             {
