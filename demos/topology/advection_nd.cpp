@@ -74,7 +74,7 @@ auto exact_rho(Tensor const& x, double t, double speed_factor)
     {
         const double pi     = std::acos(-1.);
         const double center = speed_factor / (2 * pi) * std::sin(2 * pi * t);
-        rho                 = xt::abs(x - center) <= radius;
+        rho                 = xt::abs(xt::flatten(x) - center) <= radius;
     }
     else
     {
@@ -102,7 +102,7 @@ double rho_error(Field const& rho, double t, double speed_factor, double ord = 2
     samurai::for_each_cell_interval(rho.mesh(),
                                     [&](auto const& cells)
                                     {
-                                        error += xt::sum(xt::pow(xt::abs(rho(cells) - exact_rho(cells.center(), t, speed_factor)), ord)
+                                        error += xt::sum(xt::pow(xt::abs(rho[cells] - exact_rho(cells.center(), t, speed_factor)), ord)
                                                          * std::pow(cells.length, rho.dim))();
                                     });
 
@@ -168,177 +168,6 @@ auto init_cell_lists(Meshes const&, std::index_sequence<I...>)
     return std::tuple<typename std::tuple_element_t<I, Meshes>::cl_type...>{};
 }
 
-/// Version of samurai::for_each_interval that unfold the trailing indexes array
-template <typename Mesh, typename Function, std::size_t... I>
-void for_each_interval_unfold(Mesh&& mesh, Function&& fn, std::index_sequence<I...>)
-{
-    samurai::for_each_interval(std::forward<Mesh>(mesh),
-                               [&](std::size_t level, const auto& interval, const auto& index)
-                               {
-                                   fn(level, interval, index(I)...);
-                               });
-}
-
-/// Version of samurai::for_each_cell_interval that unfold the trailing indexes array
-template <typename Mesh, typename Function, std::size_t... I>
-void for_each_cell_interval_unfold(Mesh&& mesh, Function&& fn, std::index_sequence<I...>)
-{
-    samurai::for_each_cell_interval(std::forward<Mesh>(mesh),
-                                    [&](std::size_t level, const auto& interval, const auto& index)
-                                    {
-                                        fn(level, interval, index(I)...);
-                                    });
-}
-
-/// Update face mesh so that each cell (cells id) of the cell mesh has its faces in the face mesh.
-template <typename Meshes, typename Fields>
-void update_face_meshes(Meshes& meshes, Fields& fields)
-{
-    constexpr std::size_t dim  = std::tuple_element_t<0, Meshes>::dim;
-    constexpr auto kcell       = make_KCellND<dim>();   // A cell
-    constexpr auto kfaces      = kcell.lowerIncident(); // All it's faces
-    constexpr auto kfaces_curr = kcell.dimension_concatenate(
-        [](auto, auto cell)
-        {
-            return cell.template incident<-1>();
-        });                                                    // Faces with same index only
-    constexpr std::size_t topology_cnt = kcell.topology() + 1; // Number of possible (full-dimension cell has maximal topology)
-
-    // A new CellList for each topology
-    auto all_cl = init_cell_lists(meshes, std::make_index_sequence<topology_cnt>{});
-
-    // Add appropriate intervals for each faces depending on stored cells
-    for_each_interval_unfold( // For each interval of the cell mesh
-        std::get<kcell.topology()>(meshes),
-        [&](std::size_t level, const auto& interval, auto... indexes)
-        {
-            // std::cout << level << " " << interval << " "; ((std::cout << indexes), ...); std::cout << std::endl;
-            kfaces.foreach ( // For each face
-                [&](auto kc)
-                {
-                    auto& cl = std::get<decltype(kc)::topology()>(all_cl);
-                    kc.shift( // Shift interval and indexes to add proper interval
-                        [&](auto shifted_level, const auto& shifted_interval, auto... shifted_indexes)
-                        {
-                            cl[shifted_level][{shifted_indexes...}].add_interval(shifted_interval);
-                        },
-                        level,
-                        interval,
-                        indexes...);
-                });
-        },
-        std::make_index_sequence<dim - 1>{});
-
-    // Update meshes and associated fields
-    kfaces_curr.foreach (
-        [&](auto c)
-        {
-            constexpr std::size_t topology = decltype(c)::topology();
-
-            auto& mesh = std::get<topology>(meshes);
-            std::tuple_element_t<topology, Meshes> new_mesh(std::get<topology>(all_cl), mesh);
-            mesh.swap(new_mesh);
-
-            std::tuple_element_t<topology, Fields> new_field("new_field", mesh);
-            using std::swap;
-            swap(new_field.array(), std::get<topology>(fields).array());
-        });
-}
-
-/// Compute the flux for each face (cells id) depending on the neighboring cells
-template <typename Meshes, typename Fields, typename Options>
-void update_fluxes(Meshes const& meshes, Fields& fields, Options const& options, double t)
-{
-    constexpr std::size_t dim  = std::tuple_element_t<0, Meshes>::dim;
-    constexpr auto kcell       = make_KCellND<dim>();   // A cell
-    constexpr auto kfaces      = kcell.lowerIncident(); // All it's faces
-    constexpr auto kfaces_curr = kcell.dimension_concatenate(
-        [](auto, auto cell)
-        {
-            return cell.template incident<-1>();
-        });                                                    // Faces with same index only
-    constexpr std::size_t topology_cnt = kcell.topology() + 1; // Number of possible (full-dimension cell has maximal topology)
-
-    auto const& rho = std::get<kcell.topology()>(fields);
-
-    kfaces_curr.foreach ( // For each topology of the faces
-        [&](auto kc)
-        {
-            constexpr std::size_t topology = decltype(kc)::topology();
-            auto& flux                     = std::get<topology>(fields);
-
-#if 0
-            for_each_interval_unfold( // For each interval of the corresponding mesh
-                std::get<topology>(meshes),
-                [&](std::size_t level, const auto& interval, auto... indexes)
-                {
-                    // std::cout << level << " " << interval << " "; ((std::cout << indexes), ...); std::cout << std::endl;
-                    [[maybe_unused]] auto dummy = [&](auto l, auto i, auto... j)
-                    {
-                        return rho(l, i, j...);
-                    };
-                    auto&& [rho_left, rho_right] = kc.upperIncident().shift(dummy, level, interval, indexes...);
-                    // auto && [rho_left, rho_right] = kc.upperIncident().shift(rho, level, interval, indexes...); // FIXME: segfault ?!!
-
-                    /*
-                    std::cout << "IWH" << std::endl;
-                    std::cout << kc.shift(flux, level, interval, indexes...) << std::endl;
-                    std::cout << rho(level, interval, indexes...) << std::endl;
-                    std::cout << rho_left << std::endl;
-                    std::cout << rho_right << std::endl;
-                    */
-
-                    // TODO: using speed function instead of a constant velocity!
-                    kc.shift(flux, level, interval, indexes...) = 0.5 * options.u * (rho_left + rho_right)
-                                                                + 0.5 * std::abs(options.u) * (rho_left - rho_right);
-                },
-                std::make_index_sequence<dim - 1>{}
-            );
-#else
-            for_each_cell_interval(std::get<topology>(meshes),
-                                   [&](auto const& cell_interval)
-                                   {
-                                       auto&& [rho_left, rho_right] = kc.upperIncident().shift(rho, cell_interval);
-                                       auto u = xt::view(speed(cell_interval.center(), t, options.u), kc.template ortho_direction<0>());
-                                       kc.shift(flux, cell_interval) = 0.5 * u * (rho_left + rho_right)
-                                                                     + 0.5 * xt::abs(u) * (rho_left - rho_right);
-                                   });
-#endif
-        });
-}
-
-template <typename Meshes, typename Fields>
-void update_rho(Meshes const& meshes, Fields& fields, double dt)
-{
-    constexpr std::size_t dim  = std::tuple_element_t<0, Meshes>::dim;
-    constexpr auto kcell       = make_KCellND<dim>();   // A cell
-    constexpr auto kfaces      = kcell.lowerIncident(); // All it's faces
-    constexpr auto kfaces_curr = kcell.dimension_concatenate(
-        [](auto, auto cell)
-        {
-            return cell.template incident<-1>();
-        });                                                    // Faces with same index only
-    constexpr std::size_t topology_cnt = kcell.topology() + 1; // Number of possible (full-dimension cell has maximal topology)
-
-    auto& rho = std::get<kcell.topology()>(fields);
-
-    for_each_interval_unfold(
-        rho.mesh(),
-        [&](std::size_t level, const auto& interval, auto... indexes)
-        {
-            const double factor = dt / samurai::cell_length(level);
-            kfaces.enumerate(
-                [&](auto idx, auto kc)
-                {
-                    constexpr std::size_t topology = decltype(kc)::topology();
-                    auto& flux                     = std::get<topology>(fields);
-                    // FIXME: currently based on lowerIncident order.
-                    rho(level, interval, indexes...) -= ((idx % 2 == 0) ? -1 : 1) * factor * kc.shift(flux, level, interval, indexes...);
-                });
-        },
-        std::make_index_sequence<dim - 1>{});
-}
-
 /// Run the simulation for the given dimension
 template <std::size_t dim, typename Options>
 void run_simulation(Options const& options)
@@ -366,6 +195,7 @@ void run_simulation(Options const& options)
     is_periodic.fill(options.is_periodic);
 
     auto meshes     = init_topology_meshes<Config>(std::make_index_sequence<topology_cnt>{});
+    using Meshes    = decltype(meshes);
     auto& mesh_cell = std::get<kcell.topology()>(meshes);
     (kcell + kfaces_curr)
         .foreach (
@@ -380,9 +210,10 @@ void run_simulation(Options const& options)
     ///////////////////////////////////////////////////////////////////////////
     // Creating one field per topology
     std::cout << "Initializing fields... " << std::flush;
-    auto fields = init_fields(meshes, std::make_index_sequence<topology_cnt>{});
-    auto& rho   = std::get<kcell.topology()>(fields);
-    rho         = init_rho(std::get<kcell.topology()>(meshes), options.u);
+    auto fields  = init_fields(meshes, std::make_index_sequence<topology_cnt>{});
+    using Fields = decltype(fields);
+    auto& rho    = std::get<kcell.topology()>(fields);
+    rho          = init_rho(std::get<kcell.topology()>(meshes), options.u);
     kfaces_curr.foreach (
         [&](auto c)
         {
@@ -423,21 +254,89 @@ void run_simulation(Options const& options)
         dt = std::min(dt, options.Tf - t);
         std::cout << fmt::format("it {:5d}: t = {:.4e}, dt = {:.4e}, steps:", nt++, t + dt, dt) << std::flush;
 
+        ///////////////////////////////////////////////////////////////////////
+        // Multi-resolution adaptation
         std::cout << " MR" << std::flush;
         MRadaptation(options.mr_epsilon, options.mr_regularity);
 
+        ///////////////////////////////////////////////////////////////////////
+        // Updating ghosts
         std::cout << " ghost" << std::flush;
         samurai::update_ghost_mr(rho);
 
+        ///////////////////////////////////////////////////////////////////////
+        // Updating face's meshes
         std::cout << " face" << std::flush;
-        update_face_meshes(meshes, fields);
 
+        // A new CellList for each topology
+        auto all_cl = init_cell_lists(meshes, std::make_index_sequence<topology_cnt>{});
+
+        // Add appropriate intervals for each faces depending on stored cells
+        for_each_cell_interval( // For each interval of the cell mesh
+            mesh_cell,
+            [&](auto const& cell_interval)
+            {
+                kfaces.foreach ( // For each face
+                    [&](auto kc)
+                    {
+                        auto shifted_ci = kc.shift(cell_interval);
+                        std::get<decltype(kc)::topology()>(all_cl)[shifted_ci.level][shifted_ci.indices].add_interval(shifted_ci.interval);
+                    });
+            });
+
+        // Update meshes and associated fields
+        kfaces_curr.foreach (
+            [&](auto c)
+            {
+                constexpr std::size_t topology = decltype(c)::topology();
+
+                auto& mesh = std::get<topology>(meshes);
+                std::tuple_element_t<topology, Meshes> new_mesh(std::get<topology>(all_cl), mesh);
+                mesh.swap(new_mesh);
+
+                std::tuple_element_t<topology, Fields> new_field("new_field", mesh);
+                using std::swap;
+                swap(new_field.array(), std::get<topology>(fields).array());
+            });
+
+        ///////////////////////////////////////////////////////////////////////
+        // Updating flux fields
         std::cout << " flux" << std::flush;
-        update_fluxes(meshes, fields, options, t);
+        kfaces_curr.foreach ( // For each topology of the faces
+            [&](auto kc)
+            {
+                constexpr std::size_t topology = decltype(kc)::topology();
+                auto& flux                     = std::get<topology>(fields);
 
+                for_each_cell_interval(std::get<topology>(meshes),
+                                       [&](auto const& cell_interval)
+                                       {
+                                           auto&& [rho_left, rho_right] = kc.upperIncident().shift(rho, cell_interval);
+                                           auto u = xt::view(speed(cell_interval.center(), t, options.u), kc.template ortho_direction<0>());
+                                           kc.shift(flux, cell_interval) = 0.5 * u * (rho_left + rho_right)
+                                                                         + 0.5 * xt::abs(u) * (rho_left - rho_right);
+                                       });
+            });
+
+        ///////////////////////////////////////////////////////////////////////
+        // Updating rho
         std::cout << " rho" << std::flush;
-        update_rho(meshes, fields, dt);
+        for_each_cell_interval(mesh_cell,
+                               [&](auto const& cell_interval)
+                               {
+                                   const double factor = dt / samurai::cell_length(cell_interval.level);
+                                   kfaces.enumerate(
+                                       [&](auto idx, auto kc)
+                                       {
+                                           constexpr std::size_t topology = decltype(kc)::topology();
+                                           auto& flux                     = std::get<topology>(fields);
+                                           // FIXME: currently based on lowerIncident order.
+                                           rho[cell_interval] -= ((idx % 2 == 0) ? -1 : 1) * factor * kc.shift(flux, cell_interval);
+                                       });
+                               });
 
+        ///////////////////////////////////////////////////////////////////////
+        // Updating time, error, saving
         t += dt;
 
         std::cout << ", error = " << std::flush;
