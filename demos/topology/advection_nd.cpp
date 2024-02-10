@@ -34,16 +34,17 @@ auto speed(Tensor const& x, double t, double speed_factor)
     {
         // In 1d, homogeneous in space, but time oscillating velocity field.
         const double pi = std::acos(-1.);
-        s               = speed_factor * std::cos(2 * pi * t);
+        xt::view(s, 0)  = std::cos(2 * pi * t);
     }
     else
     {
         // In 2d and more, rotating (divergence-free) velocity field.
-        s(0)                      = -x(1);
-        s(1)                      = x(0);
-        s(xt::range(2, shape[0])) = x(xt::range(2, shape[0]));
+        xt::view(s, 0)                      = -xt::view(x, 1);
+        xt::view(s, 1)                      = xt::view(x, 0);
+        xt::view(s, xt::range(2, shape[0])) = xt::view(x, xt::range(2, shape[0]));
     }
 
+    s *= speed_factor;
     return s;
 }
 
@@ -82,11 +83,11 @@ auto exact_rho(Tensor const& x, double t, double speed_factor)
             shape[i] = 1;
         }
 
-        const double theta = speed_factor * t;
-        auto center        = xt::eval(xt::zeros<double>(shape));
-        center(0)          = std::cos(theta);
-        center(1)          = std::sin(theta);
-        rho                = xt::norm_sq(x - center, {0}) <= radius * radius;
+        const double theta  = speed_factor * t;
+        auto center         = xt::eval(xt::zeros<double>(shape));
+        xt::view(center, 0) = std::cos(theta);
+        xt::view(center, 1) = std::sin(theta);
+        rho                 = xt::norm_sq(x - center, {0}) <= radius * radius;
     }
 
     return rho;
@@ -140,7 +141,7 @@ auto init_rho(Mesh& mesh, double speed_factor)
     samurai::for_each_cell_interval(mesh,
                                     [&](auto const& cells)
                                     {
-                                        rho(cells) = exact_rho(cells.center(), 0., speed_factor);
+                                        rho[cells] = exact_rho(cells.center(), 0., speed_factor);
                                     });
 
     return rho;
@@ -176,6 +177,17 @@ void for_each_interval_unfold(Mesh&& mesh, Function&& fn, std::index_sequence<I.
                                {
                                    fn(level, interval, index(I)...);
                                });
+}
+
+/// Version of samurai::for_each_cell_interval that unfold the trailing indexes array
+template <typename Mesh, typename Function, std::size_t... I>
+void for_each_cell_interval_unfold(Mesh&& mesh, Function&& fn, std::index_sequence<I...>)
+{
+    samurai::for_each_cell_interval(std::forward<Mesh>(mesh),
+                                    [&](std::size_t level, const auto& interval, const auto& index)
+                                    {
+                                        fn(level, interval, index(I)...);
+                                    });
 }
 
 /// Update face mesh so that each cell (cells id) of the cell mesh has its faces in the face mesh.
@@ -235,7 +247,7 @@ void update_face_meshes(Meshes& meshes, Fields& fields)
 
 /// Compute the flux for each face (cells id) depending on the neighboring cells
 template <typename Meshes, typename Fields, typename Options>
-void update_fluxes(Meshes const& meshes, Fields& fields, Options const& options)
+void update_fluxes(Meshes const& meshes, Fields& fields, Options const& options, double t)
 {
     constexpr std::size_t dim  = std::tuple_element_t<0, Meshes>::dim;
     constexpr auto kcell       = make_KCellND<dim>();   // A cell
@@ -255,6 +267,7 @@ void update_fluxes(Meshes const& meshes, Fields& fields, Options const& options)
             constexpr std::size_t topology = decltype(kc)::topology();
             auto& flux                     = std::get<topology>(fields);
 
+#if 0
             for_each_interval_unfold( // For each interval of the corresponding mesh
                 std::get<topology>(meshes),
                 [&](std::size_t level, const auto& interval, auto... indexes)
@@ -279,7 +292,18 @@ void update_fluxes(Meshes const& meshes, Fields& fields, Options const& options)
                     kc.shift(flux, level, interval, indexes...) = 0.5 * options.u * (rho_left + rho_right)
                                                                 + 0.5 * std::abs(options.u) * (rho_left - rho_right);
                 },
-                std::make_index_sequence<dim - 1>{});
+                std::make_index_sequence<dim - 1>{}
+            );
+#else
+            for_each_cell_interval(std::get<topology>(meshes),
+                                   [&](auto const& cell_interval)
+                                   {
+                                       auto&& [rho_left, rho_right] = kc.upperIncident().shift(rho, cell_interval);
+                                       auto u = xt::view(speed(cell_interval.center(), t, options.u), kc.template ortho_direction<0>());
+                                       kc.shift(flux, cell_interval) = 0.5 * u * (rho_left + rho_right)
+                                                                     + 0.5 * xt::abs(u) * (rho_left - rho_right);
+                                   });
+#endif
         });
 }
 
@@ -397,8 +421,7 @@ void run_simulation(Options const& options)
     while (t < options.Tf)
     {
         dt = std::min(dt, options.Tf - t);
-        t += dt;
-        std::cout << fmt::format("it {:5d}: t = {:.4e}, dt = {:.4e}, steps:", nt++, t, dt) << std::flush;
+        std::cout << fmt::format("it {:5d}: t = {:.4e}, dt = {:.4e}, steps:", nt++, t + dt, dt) << std::flush;
 
         std::cout << " MR" << std::flush;
         MRadaptation(options.mr_epsilon, options.mr_regularity);
@@ -410,10 +433,12 @@ void run_simulation(Options const& options)
         update_face_meshes(meshes, fields);
 
         std::cout << " flux" << std::flush;
-        update_fluxes(meshes, fields, options);
+        update_fluxes(meshes, fields, options, t);
 
         std::cout << " rho" << std::flush;
         update_rho(meshes, fields, dt);
+
+        t += dt;
 
         std::cout << ", error = " << std::flush;
         double error = rho_error(rho, t, options.u);
@@ -424,10 +449,13 @@ void run_simulation(Options const& options)
             std::cout << " " << mesh_cell.get_union().nb_cells(l);
         }
         std::cout << std::endl;
-    }
 
-    // Testing error computation
-    std::cout << "error: " << rho_error(std::get<kcell.topology()>(fields), 0., options.u) << std::endl;
+        if (t >= static_cast<double>(nsave + 1) * dt_save || t == options.Tf)
+        {
+            const std::string suffix = fmt::format("_{}d", dim) + ((options.nfiles != 1) ? fmt::format("_ite_{}", nsave++) : "");
+            save(options.path, options.filename, rho, suffix);
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -453,7 +481,7 @@ int main(int argc, char* argv[])
 
         // Output parameters
         fs::path path        = fs::current_path();
-        std::string filename = "FV_advection_1d";
+        std::string filename = "FV_advection";
         std::size_t nfiles   = 1;
     } options;
 
