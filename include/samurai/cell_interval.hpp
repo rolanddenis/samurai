@@ -143,6 +143,13 @@ namespace samurai
            << " topology: " << topology_as_string<dim_>(topology);
     }
 
+    template <std::size_t dim, class TInterval, std::size_t Topology>
+    inline std::ostream& operator<<(std::ostream& out, const CellInterval<dim, TInterval, Topology>& ci)
+    {
+        ci.to_stream(out);
+        return out;
+    }
+
     template <std::size_t dim_, class TInterval, std::size_t Topology>
     inline bool operator==(const CellInterval<dim_, TInterval, Topology>& lhs, const CellInterval<dim_, TInterval, Topology>& rhs)
     {
