@@ -172,6 +172,8 @@ auto init_cell_lists(Meshes const&, std::index_sequence<I...>)
 template <std::size_t dim, typename Options>
 void run_simulation(Options const& options)
 {
+    std::cout << "Dimension " << dim << std::endl;
+
     using Config = samurai::MRConfig<dim>;
 
     // Topology of cells and faces
@@ -364,7 +366,7 @@ int main(int argc, char* argv[])
     struct
     {
         // Simulation parameters
-        std::size_t dim  = 1;
+        std::size_t dim  = 2;
         double left_box  = -2;
         double right_box = 2;
         bool is_periodic = false;
@@ -374,7 +376,7 @@ int main(int argc, char* argv[])
 
         // Multiresolution parameters
         std::size_t min_level = 4;
-        std::size_t max_level = 10;
+        std::size_t max_level = 8;
         double mr_epsilon     = 2.e-4; // Threshold used by multiresolution
         double mr_regularity  = 1.;    // Regularity guess for multiresolution
 
