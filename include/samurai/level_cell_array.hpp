@@ -489,8 +489,7 @@ namespace samurai
 
     template <std::size_t Dim, class TInterval, std::size_t Topology>
     template <class E>
-    inline auto LevelCellArray<Dim, TInterval, Topology>::get_interval(const interval_t& interval,
-                                                                       const xt::xexpression<E>& index) const
+    inline auto LevelCellArray<Dim, TInterval, Topology>::get_interval(const interval_t& interval, const xt::xexpression<E>& index) const
         -> const interval_t&
     {
         xt::xtensor_fixed<value_t, xt::xshape<dim>> point;
@@ -523,32 +522,32 @@ namespace samurai
         return get_interval({i, i + 1}, others).index + i;
     }
 
-    template <std::size_t Dim, class TInterval>
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
     template <class E>
-    inline auto LevelCellArray<Dim, TInterval>::get_index(const xt::xexpression<E>& coord) const -> index_t
+    inline auto LevelCellArray<Dim, TInterval, Topology>::get_index(const xt::xexpression<E>& coord) const -> index_t
     {
         using namespace xt::placeholders;
         xt::xtensor_fixed<value_t, xt::xshape<dim>> coord_array = coord;
         return get_interval({coord_array(0), coord_array(0) + 1}, xt::view(coord_array, xt::range(1, _))).index + coord_array(0);
     }
 
-    template <std::size_t Dim, class TInterval>
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
     template <typename... T, typename D>
-    inline auto LevelCellArray<Dim, TInterval>::get_cell(value_t i, T... index) const -> cell_t
+    inline auto LevelCellArray<Dim, TInterval, Topology>::get_cell(value_t i, T... index) const -> cell_t
     {
         return {m_level, i, index..., get_index(i, index...)};
     }
 
-    template <std::size_t Dim, class TInterval>
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
     template <class E>
-    inline auto LevelCellArray<Dim, TInterval>::get_cell(value_t i, const xt::xexpression<E>& others) const -> cell_t
+    inline auto LevelCellArray<Dim, TInterval, Topology>::get_cell(value_t i, const xt::xexpression<E>& others) const -> cell_t
     {
         return {m_level, i, others, get_index(i, others)};
     }
 
-    template <std::size_t Dim, class TInterval>
+    template <std::size_t Dim, class TInterval, std::size_t Topology>
     template <class E>
-    inline auto LevelCellArray<Dim, TInterval>::get_cell(const xt::xexpression<E>& coord) const -> cell_t
+    inline auto LevelCellArray<Dim, TInterval, Topology>::get_cell(const xt::xexpression<E>& coord) const -> cell_t
     {
         xt::xtensor_fixed<value_t, xt::xshape<dim>> coord_array = coord;
 

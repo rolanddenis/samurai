@@ -353,7 +353,8 @@ namespace samurai
 
     template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config, Topology>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
+    inline auto
+    Mesh_base<D, Config, Topology>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
         -> const interval_t&
     {
         return m_cells[mesh_id_t::reference].get_interval(level, interval, index);
@@ -382,8 +383,7 @@ namespace samurai
 
     template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const
-        -> index_t
+    inline auto Mesh_base<D, Config, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
     {
         return m_cells[mesh_id_t::reference].get_index(level, coord);
     }
@@ -395,17 +395,16 @@ namespace samurai
         return m_cells[mesh_id_t::reference].get_cell(level, i, index...);
     }
 
-    template <class D, class Config>
-    inline auto
-    Mesh_base<D, Config>::get_cell(std::size_t level, value_t i, const xt::xtensor_fixed<value_t, xt::xshape<dim - 1>>& index) const -> cell_t
+    template <class D, class Config, std::size_t Topology>
+    template <class E>
+    inline auto Mesh_base<D, Config, Topology>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& index) const -> cell_t
     {
         return m_cells[mesh_id_t::reference].get_cell(level, i, index);
     }
 
     template <class D, class Config, std::size_t Topology>
     template <class E>
-    inline auto Mesh_base<D, Config, Topology>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const
-        -> cell_t
+    inline auto Mesh_base<D, Config, Topology>::get_cell(std::size_t level, const xt::xexpression<E>& coord) const -> cell_t
     {
         return m_cells[mesh_id_t::reference].get_cell(level, coord);
     }

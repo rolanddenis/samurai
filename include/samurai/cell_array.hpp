@@ -291,9 +291,9 @@ namespace samurai
 
     template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto
-    CellArray<dim_, TInterval, max_size_, Topology>::get_interval(std::size_t level, const interval_t& interval, const xt::xexpression<E>& index) const
-        -> const interval_t&
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_interval(std::size_t level,
+                                                                              const interval_t& interval,
+                                                                              const xt::xexpression<E>& index) const -> const interval_t&
     {
         return m_cells[level].get_interval(interval, index);
     }
@@ -315,7 +315,8 @@ namespace samurai
 
     template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const
+    inline auto
+    CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, value_t i, const xt::xexpression<E>& others) const
         -> index_t
     {
         return m_cells[level].get_index(i, others);
@@ -323,14 +324,8 @@ namespace samurai
 
     template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
-    {
-        return m_cells[level].get_index(coord);
-    }
-
-    template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
-    template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const -> index_t
+    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_index(std::size_t level, const xt::xexpression<E>& coord) const
+        -> index_t
     {
         return m_cells[level].get_index(coord);
     }
@@ -344,8 +339,8 @@ namespace samurai
 
     template <std::size_t dim_, class TInterval, std::size_t max_size_, std::size_t Topology>
     template <class E>
-    inline auto CellArray<dim_, TInterval, max_size_, Topology>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& others) const
-        -> cell_t
+    inline auto
+    CellArray<dim_, TInterval, max_size_, Topology>::get_cell(std::size_t level, value_t i, const xt::xexpression<E>& others) const -> cell_t
     {
         return m_cells[level].get_cell(i, others);
     }
